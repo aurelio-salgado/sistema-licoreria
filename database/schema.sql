@@ -6,7 +6,7 @@ CREATE DATABASE IF NOT EXISTS sistema_licoreria
 USE sistema_licoreria;
 
 -- Usuarios
-CREATE TABLE usuarios (
+CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE usuarios (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Roles
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id_rol BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(80) NOT NULL,
     descripcion VARCHAR(255) NULL,
@@ -48,7 +48,7 @@ CREATE TABLE roles (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Permisos
-CREATE TABLE permisos (
+CREATE TABLE IF NOT EXISTS permisos (
     id_permiso BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     codigo VARCHAR(100) NOT NULL,
     nombre VARCHAR(120) NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE permisos (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Asignaciones de roles a usuarios
-CREATE TABLE usuario_roles (
+CREATE TABLE IF NOT EXISTS usuario_roles (
     id_usuario BIGINT UNSIGNED NOT NULL,
     id_rol BIGINT UNSIGNED NOT NULL,
     asignado_por BIGINT UNSIGNED NULL,
@@ -85,7 +85,7 @@ CREATE TABLE usuario_roles (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Asignaciones de permisos a roles
-CREATE TABLE rol_permisos (
+CREATE TABLE IF NOT EXISTS rol_permisos (
     id_rol BIGINT UNSIGNED NOT NULL,
     id_permiso BIGINT UNSIGNED NOT NULL,
     concedido_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -102,7 +102,7 @@ CREATE TABLE rol_permisos (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Categorías
-CREATE TABLE categorias (
+CREATE TABLE IF NOT EXISTS categorias (
     id_categoria BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(100) NOT NULL,
     descripcion VARCHAR(255) NULL,
@@ -118,7 +118,7 @@ CREATE TABLE categorias (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Marcas
-CREATE TABLE marcas (
+CREATE TABLE IF NOT EXISTS marcas (
     id_marca BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(100) NOT NULL,
     descripcion VARCHAR(255) NULL,
@@ -134,7 +134,7 @@ CREATE TABLE marcas (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Unidades de medida
-CREATE TABLE unidades_medida (
+CREATE TABLE IF NOT EXISTS unidades_medida (
     id_unidad BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(80) NOT NULL,
     abreviatura VARCHAR(20) NOT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE unidades_medida (
   COLLATE = utf8mb4_unicode_ci;
 
 -- Productos
-CREATE TABLE productos (
+CREATE TABLE IF NOT EXISTS productos (
     id_producto BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     codigo VARCHAR(60) NOT NULL,
     codigo_barras VARCHAR(80) NULL,
@@ -194,6 +194,50 @@ CREATE TABLE productos (
     INDEX idx_productos_marca (id_marca),
     INDEX idx_productos_unidad (id_unidad),
     INDEX idx_productos_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id_cliente BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(150) NOT NULL,
+    identificacion VARCHAR(50) NULL,
+    telefono VARCHAR(30) NULL,
+    correo VARCHAR(150) NULL,
+    direccion VARCHAR(255) NULL,
+    es_consumidor_final BOOLEAN NOT NULL DEFAULT FALSE,
+    estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_clientes PRIMARY KEY (id_cliente),
+    CONSTRAINT uq_clientes_identificacion UNIQUE (identificacion),
+    CONSTRAINT chk_clientes_es_consumidor_final
+        CHECK (es_consumidor_final IN (FALSE, TRUE)),
+    CONSTRAINT chk_clientes_estado CHECK (estado IN ('activo', 'inactivo')),
+    INDEX idx_clientes_nombre (nombre),
+    INDEX idx_clientes_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Proveedores
+CREATE TABLE IF NOT EXISTS proveedores (
+    id_proveedor BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(150) NOT NULL,
+    identificacion_fiscal VARCHAR(50) NULL,
+    contacto VARCHAR(150) NULL,
+    telefono VARCHAR(30) NULL,
+    correo VARCHAR(150) NULL,
+    direccion VARCHAR(255) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_proveedores PRIMARY KEY (id_proveedor),
+    CONSTRAINT uq_proveedores_identificacion_fiscal UNIQUE (identificacion_fiscal),
+    CONSTRAINT chk_proveedores_estado CHECK (estado IN ('activo', 'inactivo')),
+    INDEX idx_proveedores_nombre (nombre),
+    INDEX idx_proveedores_estado (estado)
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
