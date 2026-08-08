@@ -308,3 +308,162 @@ CREATE TABLE IF NOT EXISTS detalle_compras (
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
+
+-- Métodos de pago
+CREATE TABLE IF NOT EXISTS metodos_pago (
+    id_metodo_pago BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(80) NOT NULL,
+    requiere_referencia BOOLEAN NOT NULL,
+    es_efectivo BOOLEAN NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_metodos_pago PRIMARY KEY (id_metodo_pago),
+    CONSTRAINT uq_metodos_pago_nombre UNIQUE (nombre),
+    CONSTRAINT chk_metodos_pago_requiere_referencia
+        CHECK (requiere_referencia IN (FALSE, TRUE)),
+    CONSTRAINT chk_metodos_pago_es_efectivo CHECK (es_efectivo IN (FALSE, TRUE)),
+    CONSTRAINT chk_metodos_pago_estado CHECK (estado IN ('activo', 'inactivo')),
+    INDEX idx_metodos_pago_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Cajas
+CREATE TABLE IF NOT EXISTS cajas (
+    id_caja BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    fecha_apertura DATETIME NOT NULL,
+    monto_apertura DECIMAL(12,2) NOT NULL,
+    fecha_cierre DATETIME NULL,
+    monto_cierre DECIMAL(12,2) NULL,
+    monto_esperado DECIMAL(12,2) NULL,
+    monto_contado DECIMAL(12,2) NULL,
+    diferencia DECIMAL(12,2) NULL,
+    estado VARCHAR(20) NOT NULL,
+    observacion VARCHAR(500) NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_cajas PRIMARY KEY (id_caja),
+    CONSTRAINT chk_cajas_monto_apertura CHECK (monto_apertura >= 0),
+    CONSTRAINT chk_cajas_fecha_cierre
+        CHECK (fecha_cierre IS NULL OR fecha_cierre >= fecha_apertura),
+    CONSTRAINT chk_cajas_monto_cierre CHECK (monto_cierre IS NULL OR monto_cierre >= 0),
+    CONSTRAINT chk_cajas_monto_contado CHECK (monto_contado IS NULL OR monto_contado >= 0),
+    CONSTRAINT chk_cajas_estado CHECK (estado IN ('abierta', 'cerrada')),
+    CONSTRAINT fk_cajas_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_cajas_usuario_estado (id_usuario, estado),
+    INDEX idx_cajas_fecha_apertura (fecha_apertura),
+    INDEX idx_cajas_fecha_cierre (fecha_cierre)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Ventas
+CREATE TABLE IF NOT EXISTS ventas (
+    id_venta BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    numero_venta VARCHAR(50) NOT NULL,
+    numero_factura VARCHAR(50) NULL,
+    id_cliente BIGINT UNSIGNED NOT NULL,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    id_caja BIGINT UNSIGNED NULL,
+    fecha_venta DATETIME NOT NULL,
+    subtotal DECIMAL(12,2) NOT NULL,
+    descuento DECIMAL(12,2) NOT NULL,
+    impuesto DECIMAL(12,2) NOT NULL,
+    total DECIMAL(12,2) NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    motivo_anulacion VARCHAR(500) NULL,
+    anulada_por BIGINT UNSIGNED NULL,
+    anulada_en DATETIME NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_ventas PRIMARY KEY (id_venta),
+    CONSTRAINT uq_ventas_numero_venta UNIQUE (numero_venta),
+    CONSTRAINT uq_ventas_numero_factura UNIQUE (numero_factura),
+    CONSTRAINT chk_ventas_subtotal CHECK (subtotal >= 0),
+    CONSTRAINT chk_ventas_descuento CHECK (descuento >= 0),
+    CONSTRAINT chk_ventas_impuesto CHECK (impuesto >= 0),
+    CONSTRAINT chk_ventas_total CHECK (total >= 0),
+    CONSTRAINT chk_ventas_estado CHECK (estado IN ('preparacion', 'completada', 'anulada')),
+    CONSTRAINT fk_ventas_cliente
+        FOREIGN KEY (id_cliente) REFERENCES clientes (id_cliente)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_ventas_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_ventas_caja
+        FOREIGN KEY (id_caja) REFERENCES cajas (id_caja)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_ventas_anulada_por
+        FOREIGN KEY (anulada_por) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_ventas_fecha_venta (fecha_venta),
+    INDEX idx_ventas_estado (estado),
+    INDEX idx_ventas_usuario_fecha (id_usuario, fecha_venta),
+    INDEX idx_ventas_cliente (id_cliente),
+    INDEX idx_ventas_caja (id_caja),
+    INDEX idx_ventas_anulada_por (anulada_por)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Detalle de ventas
+CREATE TABLE IF NOT EXISTS detalle_ventas (
+    id_detalle_venta BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_venta BIGINT UNSIGNED NOT NULL,
+    id_producto BIGINT UNSIGNED NOT NULL,
+    cantidad DECIMAL(12,3) NOT NULL,
+    costo_unitario_historico DECIMAL(12,2) NOT NULL,
+    precio_unitario DECIMAL(12,2) NOT NULL,
+    descuento DECIMAL(12,2) NOT NULL,
+    impuesto DECIMAL(12,2) NOT NULL,
+    subtotal DECIMAL(12,2) NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_detalle_ventas PRIMARY KEY (id_detalle_venta),
+    CONSTRAINT chk_detalle_ventas_cantidad CHECK (cantidad > 0),
+    CONSTRAINT chk_detalle_ventas_costo_historico
+        CHECK (costo_unitario_historico >= 0),
+    CONSTRAINT chk_detalle_ventas_precio_unitario CHECK (precio_unitario > 0),
+    CONSTRAINT chk_detalle_ventas_descuento CHECK (descuento >= 0),
+    CONSTRAINT chk_detalle_ventas_impuesto CHECK (impuesto >= 0),
+    CONSTRAINT chk_detalle_ventas_subtotal CHECK (subtotal >= 0),
+    CONSTRAINT fk_detalle_ventas_venta
+        FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_detalle_ventas_producto
+        FOREIGN KEY (id_producto) REFERENCES productos (id_producto)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_detalle_ventas_venta (id_venta),
+    INDEX idx_detalle_ventas_producto (id_producto)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Pagos de venta
+CREATE TABLE IF NOT EXISTS pagos_venta (
+    id_pago BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_venta BIGINT UNSIGNED NOT NULL,
+    id_metodo_pago BIGINT UNSIGNED NOT NULL,
+    monto DECIMAL(12,2) NOT NULL,
+    referencia VARCHAR(120) NULL,
+    monto_recibido DECIMAL(12,2) NULL,
+    cambio DECIMAL(12,2) NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_pagos_venta PRIMARY KEY (id_pago),
+    CONSTRAINT chk_pagos_venta_monto CHECK (monto > 0),
+    CONSTRAINT chk_pagos_venta_monto_recibido
+        CHECK (monto_recibido IS NULL OR monto_recibido >= monto),
+    CONSTRAINT chk_pagos_venta_cambio CHECK (cambio >= 0),
+    CONSTRAINT fk_pagos_venta_venta
+        FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_pagos_venta_metodo
+        FOREIGN KEY (id_metodo_pago) REFERENCES metodos_pago (id_metodo_pago)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_pagos_venta_venta (id_venta),
+    INDEX idx_pagos_venta_metodo (id_metodo_pago)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
