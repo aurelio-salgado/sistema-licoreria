@@ -467,3 +467,161 @@ CREATE TABLE IF NOT EXISTS pagos_venta (
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
+
+-- Movimientos de inventario
+CREATE TABLE IF NOT EXISTS movimientos_inventario (
+    id_movimiento_inventario BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_producto BIGINT UNSIGNED NOT NULL,
+    tipo_movimiento VARCHAR(40) NOT NULL,
+    naturaleza VARCHAR(10) NOT NULL,
+    cantidad DECIMAL(12,3) NOT NULL,
+    existencia_anterior DECIMAL(12,3) NOT NULL,
+    existencia_posterior DECIMAL(12,3) NOT NULL,
+    tipo_referencia VARCHAR(40) NOT NULL,
+    id_referencia BIGINT UNSIGNED NOT NULL,
+    motivo VARCHAR(500) NULL,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    fecha_movimiento DATETIME NOT NULL,
+    CONSTRAINT pk_movimientos_inventario PRIMARY KEY (id_movimiento_inventario),
+    CONSTRAINT chk_movimientos_inventario_naturaleza
+        CHECK (naturaleza IN ('entrada', 'salida')),
+    CONSTRAINT chk_movimientos_inventario_cantidad CHECK (cantidad > 0),
+    CONSTRAINT chk_movimientos_inventario_existencia_anterior
+        CHECK (existencia_anterior >= 0),
+    CONSTRAINT chk_movimientos_inventario_existencia_posterior
+        CHECK (existencia_posterior >= 0),
+    CONSTRAINT chk_movimientos_inventario_id_referencia CHECK (id_referencia > 0),
+    CONSTRAINT fk_movimientos_inventario_producto
+        FOREIGN KEY (id_producto) REFERENCES productos (id_producto)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_movimientos_inventario_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_movimientos_inventario_producto_fecha (id_producto, fecha_movimiento),
+    INDEX idx_movimientos_inventario_tipo_referencia (tipo_referencia, id_referencia),
+    INDEX idx_movimientos_inventario_tipo_movimiento (tipo_movimiento),
+    INDEX idx_movimientos_inventario_usuario (id_usuario)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Movimientos de caja
+CREATE TABLE IF NOT EXISTS movimientos_caja (
+    id_movimiento_caja BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_caja BIGINT UNSIGNED NOT NULL,
+    id_venta BIGINT UNSIGNED NULL,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    tipo_movimiento VARCHAR(30) NOT NULL,
+    naturaleza VARCHAR(10) NOT NULL,
+    afecta_efectivo BOOLEAN NOT NULL,
+    monto DECIMAL(12,2) NOT NULL,
+    concepto VARCHAR(255) NOT NULL,
+    fecha_movimiento DATETIME NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_movimientos_caja PRIMARY KEY (id_movimiento_caja),
+    CONSTRAINT chk_movimientos_caja_tipo
+        CHECK (tipo_movimiento IN ('venta', 'ingreso', 'egreso', 'devolucion', 'anulacion')),
+    CONSTRAINT chk_movimientos_caja_naturaleza
+        CHECK (naturaleza IN ('entrada', 'salida')),
+    CONSTRAINT chk_movimientos_caja_afecta_efectivo
+        CHECK (afecta_efectivo IN (FALSE, TRUE)),
+    CONSTRAINT chk_movimientos_caja_monto CHECK (monto > 0),
+    CONSTRAINT fk_movimientos_caja_caja
+        FOREIGN KEY (id_caja) REFERENCES cajas (id_caja)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_movimientos_caja_venta
+        FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_movimientos_caja_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_movimientos_caja_caja_fecha (id_caja, fecha_movimiento),
+    INDEX idx_movimientos_caja_venta (id_venta),
+    INDEX idx_movimientos_caja_usuario (id_usuario),
+    INDEX idx_movimientos_caja_tipo (tipo_movimiento),
+    INDEX idx_movimientos_caja_afecta_efectivo (afecta_efectivo)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Bitácora
+CREATE TABLE IF NOT EXISTS bitacora (
+    id_bitacora BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_usuario BIGINT UNSIGNED NULL,
+    modulo VARCHAR(80) NOT NULL,
+    accion VARCHAR(100) NOT NULL,
+    entidad VARCHAR(80) NULL,
+    id_entidad BIGINT UNSIGNED NULL,
+    datos_anteriores LONGTEXT NULL,
+    datos_nuevos LONGTEXT NULL,
+    direccion_ip VARCHAR(45) NULL,
+    resultado VARCHAR(30) NOT NULL,
+    fecha_evento DATETIME NOT NULL,
+    CONSTRAINT pk_bitacora PRIMARY KEY (id_bitacora),
+    CONSTRAINT fk_bitacora_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_bitacora_fecha_evento (fecha_evento),
+    INDEX idx_bitacora_usuario_fecha (id_usuario, fecha_evento),
+    INDEX idx_bitacora_modulo_accion (modulo, accion),
+    INDEX idx_bitacora_entidad_id (entidad, id_entidad),
+    INDEX idx_bitacora_resultado (resultado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Configuración
+CREATE TABLE IF NOT EXISTS configuracion (
+    id_configuracion BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    clave VARCHAR(120) NOT NULL,
+    valor TEXT NOT NULL,
+    tipo_dato VARCHAR(30) NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    es_critica BOOLEAN NOT NULL,
+    id_usuario_actualizacion BIGINT UNSIGNED NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_configuracion PRIMARY KEY (id_configuracion),
+    CONSTRAINT uq_configuracion_clave UNIQUE (clave),
+    CONSTRAINT chk_configuracion_es_critica CHECK (es_critica IN (FALSE, TRUE)),
+    CONSTRAINT fk_configuracion_usuario_actualizacion
+        FOREIGN KEY (id_usuario_actualizacion) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_configuracion_es_critica (es_critica),
+    INDEX idx_configuracion_usuario_actualizacion (id_usuario_actualizacion)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Respaldos
+CREATE TABLE IF NOT EXISTS respaldos (
+    id_respaldo BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    ruta_segura VARCHAR(500) NOT NULL,
+    tamano_bytes BIGINT UNSIGNED NULL,
+    tipo VARCHAR(30) NOT NULL,
+    operacion VARCHAR(20) NOT NULL,
+    estado VARCHAR(30) NOT NULL,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    mensaje_resultado TEXT NULL,
+    fecha_operacion DATETIME NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_respaldos PRIMARY KEY (id_respaldo),
+    CONSTRAINT chk_respaldos_tamano_bytes
+        CHECK (tamano_bytes IS NULL OR tamano_bytes >= 0),
+    CONSTRAINT chk_respaldos_operacion
+        CHECK (operacion IN ('respaldo', 'restauracion')),
+    CONSTRAINT chk_respaldos_estado
+        CHECK (estado IN ('en_proceso', 'exitoso', 'fallido')),
+    CONSTRAINT fk_respaldos_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_respaldos_nombre_archivo (nombre_archivo),
+    INDEX idx_respaldos_tipo (tipo),
+    INDEX idx_respaldos_operacion (operacion),
+    INDEX idx_respaldos_estado (estado),
+    INDEX idx_respaldos_fecha_operacion (fecha_operacion),
+    INDEX idx_respaldos_usuario_fecha (id_usuario, fecha_operacion)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
