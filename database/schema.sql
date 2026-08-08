@@ -100,3 +100,100 @@ CREATE TABLE rol_permisos (
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
+
+-- Categorías
+CREATE TABLE categorias (
+    id_categoria BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_categorias PRIMARY KEY (id_categoria),
+    CONSTRAINT uq_categorias_nombre UNIQUE (nombre),
+    CONSTRAINT chk_categorias_estado CHECK (estado IN ('activo', 'inactivo')),
+    INDEX idx_categorias_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Marcas
+CREATE TABLE marcas (
+    id_marca BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_marcas PRIMARY KEY (id_marca),
+    CONSTRAINT uq_marcas_nombre UNIQUE (nombre),
+    CONSTRAINT chk_marcas_estado CHECK (estado IN ('activo', 'inactivo')),
+    INDEX idx_marcas_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Unidades de medida
+CREATE TABLE unidades_medida (
+    id_unidad BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(80) NOT NULL,
+    abreviatura VARCHAR(20) NOT NULL,
+    permite_decimales BOOLEAN NOT NULL DEFAULT FALSE,
+    estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_unidades_medida PRIMARY KEY (id_unidad),
+    CONSTRAINT uq_unidades_medida_nombre UNIQUE (nombre),
+    CONSTRAINT uq_unidades_medida_abreviatura UNIQUE (abreviatura),
+    CONSTRAINT chk_unidades_medida_permite_decimales
+        CHECK (permite_decimales IN (FALSE, TRUE)),
+    CONSTRAINT chk_unidades_medida_estado CHECK (estado IN ('activo', 'inactivo')),
+    INDEX idx_unidades_medida_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Productos
+CREATE TABLE productos (
+    id_producto BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    codigo VARCHAR(60) NOT NULL,
+    codigo_barras VARCHAR(80) NULL,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT NULL,
+    id_categoria BIGINT UNSIGNED NOT NULL,
+    id_marca BIGINT UNSIGNED NOT NULL,
+    id_unidad BIGINT UNSIGNED NOT NULL,
+    costo_promedio DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    precio_venta DECIMAL(12,2) NOT NULL,
+    existencia DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    existencia_minima DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    porcentaje_impuesto DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_productos PRIMARY KEY (id_producto),
+    CONSTRAINT uq_productos_codigo UNIQUE (codigo),
+    CONSTRAINT uq_productos_codigo_barras UNIQUE (codigo_barras),
+    CONSTRAINT chk_productos_costo_promedio CHECK (costo_promedio >= 0),
+    CONSTRAINT chk_productos_precio_venta CHECK (precio_venta > 0),
+    CONSTRAINT chk_productos_existencia CHECK (existencia >= 0),
+    CONSTRAINT chk_productos_existencia_minima CHECK (existencia_minima >= 0),
+    CONSTRAINT chk_productos_porcentaje_impuesto CHECK (porcentaje_impuesto >= 0),
+    CONSTRAINT chk_productos_estado CHECK (estado IN ('activo', 'inactivo')),
+    CONSTRAINT fk_productos_categoria
+        FOREIGN KEY (id_categoria) REFERENCES categorias (id_categoria)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_productos_marca
+        FOREIGN KEY (id_marca) REFERENCES marcas (id_marca)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_productos_unidad
+        FOREIGN KEY (id_unidad) REFERENCES unidades_medida (id_unidad)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_productos_nombre (nombre),
+    INDEX idx_productos_categoria (id_categoria),
+    INDEX idx_productos_marca (id_marca),
+    INDEX idx_productos_unidad (id_unidad),
+    INDEX idx_productos_estado (estado)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
