@@ -241,3 +241,70 @@ CREATE TABLE IF NOT EXISTS proveedores (
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
+
+-- Compras
+CREATE TABLE IF NOT EXISTS compras (
+    id_compra BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    numero_compra VARCHAR(50) NOT NULL,
+    numero_documento_proveedor VARCHAR(80) NULL,
+    id_proveedor BIGINT UNSIGNED NOT NULL,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    fecha_compra DATETIME NOT NULL,
+    subtotal DECIMAL(12,2) NOT NULL,
+    descuento DECIMAL(12,2) NOT NULL,
+    impuesto DECIMAL(12,2) NOT NULL,
+    total DECIMAL(12,2) NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    observacion TEXT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_compras PRIMARY KEY (id_compra),
+    CONSTRAINT uq_compras_numero_compra UNIQUE (numero_compra),
+    CONSTRAINT chk_compras_subtotal CHECK (subtotal >= 0),
+    CONSTRAINT chk_compras_descuento CHECK (descuento >= 0),
+    CONSTRAINT chk_compras_impuesto CHECK (impuesto >= 0),
+    CONSTRAINT chk_compras_total CHECK (total >= 0),
+    CONSTRAINT chk_compras_estado CHECK (estado IN ('borrador', 'recibida', 'anulada')),
+    CONSTRAINT fk_compras_proveedor
+        FOREIGN KEY (id_proveedor) REFERENCES proveedores (id_proveedor)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_compras_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_compras_numero_documento_proveedor (numero_documento_proveedor),
+    INDEX idx_compras_fecha_compra (fecha_compra),
+    INDEX idx_compras_estado (estado),
+    INDEX idx_compras_proveedor_fecha (id_proveedor, fecha_compra),
+    INDEX idx_compras_usuario (id_usuario)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Detalle de compras
+CREATE TABLE IF NOT EXISTS detalle_compras (
+    id_detalle_compra BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_compra BIGINT UNSIGNED NOT NULL,
+    id_producto BIGINT UNSIGNED NOT NULL,
+    cantidad DECIMAL(12,3) NOT NULL,
+    costo_unitario DECIMAL(12,2) NOT NULL,
+    descuento DECIMAL(12,2) NOT NULL,
+    impuesto DECIMAL(12,2) NOT NULL,
+    subtotal DECIMAL(12,2) NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_detalle_compras PRIMARY KEY (id_detalle_compra),
+    CONSTRAINT chk_detalle_compras_cantidad CHECK (cantidad > 0),
+    CONSTRAINT chk_detalle_compras_costo_unitario CHECK (costo_unitario >= 0),
+    CONSTRAINT chk_detalle_compras_descuento CHECK (descuento >= 0),
+    CONSTRAINT chk_detalle_compras_impuesto CHECK (impuesto >= 0),
+    CONSTRAINT chk_detalle_compras_subtotal CHECK (subtotal >= 0),
+    CONSTRAINT fk_detalle_compras_compra
+        FOREIGN KEY (id_compra) REFERENCES compras (id_compra)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_detalle_compras_producto
+        FOREIGN KEY (id_producto) REFERENCES productos (id_producto)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_detalle_compras_compra (id_compra),
+    INDEX idx_detalle_compras_producto (id_producto)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
