@@ -11,6 +11,21 @@ function parsePositiveInteger(value, fallback) {
     : fallback;
 }
 
+function getJwtConfig() {
+  const secret = process.env.JWT_SECRET?.trim();
+  const expiresIn = process.env.JWT_EXPIRES_IN?.trim();
+
+  if (!secret) {
+    throw new Error('JWT_SECRET no está configurado');
+  }
+
+  if (!expiresIn) {
+    throw new Error('JWT_EXPIRES_IN no está configurado');
+  }
+
+  return Object.freeze({ secret, expiresIn });
+}
+
 const env = Object.freeze({
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parsePositiveInteger(process.env.PORT, 3000),
@@ -23,6 +38,7 @@ const env = Object.freeze({
     name: process.env.DB_NAME || '',
     connectionLimit: parsePositiveInteger(process.env.DB_CONNECTION_LIMIT, 10),
   }),
+  getJwtConfig,
 });
 
 module.exports = env;
