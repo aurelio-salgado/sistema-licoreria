@@ -55,4 +55,13 @@ function getCurrentUser(req, res) {
   });
 }
 
-module.exports = { getCurrentUser, login };
+function checkPermission(req, res) {
+  res.status(200).json({
+    success: true,
+    data: {
+      authorized: true,
+    },
+  });
+}
+
+module.exports = { checkPermission, getCurrentUser, login };
