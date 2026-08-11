@@ -98,6 +98,15 @@ async function findByIdForUpdate(connection, purchaseId) {
   return rows[0] || null;
 }
 
+async function findSupplierForUpdate(connection, supplierId) {
+  const [rows] = await connection.execute(
+    `SELECT id_proveedor, estado FROM proveedores
+     WHERE id_proveedor = ? LIMIT 1 FOR UPDATE`,
+    [supplierId],
+  );
+  return rows[0] || null;
+}
+
 async function findByNumber(
   executor,
   purchaseNumber,
@@ -284,6 +293,78 @@ async function getItemAmounts(connection, purchaseId) {
   return rows;
 }
 
+async function getConfirmationItemsForUpdate(connection, purchaseId) {
+  const [rows] = await connection.execute(
+    `SELECT id_detalle_compra, id_producto, cantidad, costo_unitario,
+            descuento, impuesto, subtotal
+     FROM detalle_compras
+     WHERE id_compra = ?
+     ORDER BY id_producto, id_detalle_compra
+     FOR UPDATE`,
+    [purchaseId],
+  );
+  return rows;
+}
+
+async function lockProductsForUpdate(connection, productIds) {
+  const placeholders = productIds.map(() => '?').join(', ');
+  const [rows] = await connection.execute(
+    `SELECT p.id_producto, p.existencia, p.costo_promedio, p.estado,
+            um.permite_decimales
+     FROM productos p
+     INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+     WHERE p.id_producto IN (${placeholders})
+     ORDER BY p.id_producto
+     FOR UPDATE`,
+    productIds,
+  );
+  return rows;
+}
+
+async function updateProductInventory(
+  connection,
+  productId,
+  newStock,
+  newAverageCost,
+) {
+  await connection.execute(
+    `UPDATE productos SET existencia = ?, costo_promedio = ?
+     WHERE id_producto = ?`,
+    [newStock, newAverageCost, productId],
+  );
+}
+
+async function createInventoryMovement(connection, data) {
+  await connection.execute(
+    `INSERT INTO movimientos_inventario (
+       id_producto, tipo_movimiento, naturaleza, cantidad,
+       existencia_anterior, existencia_posterior, tipo_referencia,
+       id_referencia, motivo, id_usuario, fecha_movimiento
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      data.productId,
+      'compra',
+      'entrada',
+      data.quantity,
+      data.previousStock,
+      data.newStock,
+      'compra',
+      data.purchaseId,
+      'Recepción de compra',
+      data.userId,
+    ],
+  );
+}
+
+async function markAsReceived(connection, purchaseId) {
+  const [result] = await connection.execute(
+    `UPDATE compras SET estado = ?
+     WHERE id_compra = ? AND estado = ?`,
+    ['recibida', purchaseId, 'borrador'],
+  );
+  return result.affectedRows;
+}
+
 async function updateTotals(connection, purchaseId, totals) {
   await connection.execute(
     `UPDATE compras SET subtotal = ?, descuento = ?, impuesto = ?, total = ?
@@ -323,12 +404,18 @@ module.exports = {
   findById,
   findByIdForUpdate,
   findByNumber,
+  findSupplierForUpdate,
+  getConfirmationItemsForUpdate,
   findItemByIdForUpdate,
   findItemByProduct,
   getItemAmounts,
   list,
   listItems,
+  lockProductsForUpdate,
+  markAsReceived,
   update,
   updateItem,
+  updateProductInventory,
   updateTotals,
+  createInventoryMovement,
 };

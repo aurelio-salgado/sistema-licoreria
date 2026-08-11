@@ -8,6 +8,7 @@ const {
 } = require('./purchase.validation');
 
 const MAX_MONEY_CENTS = 999999999999n;
+const MAX_STOCK_MILLIS = 999999999999n;
 
 function httpError(statusCode, message) {
   const error = new Error(message);
@@ -34,6 +35,28 @@ function centsFromDecimal(value) {
 function formatCents(cents) {
   const digits = cents.toString().padStart(3, '0');
   return `${digits.slice(0, -2)}.${digits.slice(-2)}`;
+}
+
+function formatMillis(millis) {
+  const digits = millis.toString().padStart(4, '0');
+  return `${digits.slice(0, -3)}.${digits.slice(-3)}`;
+}
+
+function decimalToUnits(value, scale, fieldName) {
+  const normalized = String(value);
+  const pattern = new RegExp(`^\\d+(?:\\.\\d{1,${scale}})?$`);
+  if (!pattern.test(normalized)) {
+    throw httpError(400, `${fieldName} contiene un valor inconsistente`);
+  }
+  const [integerPart, decimalPart = ''] = normalized.split('.');
+  return BigInt(`${integerPart}${decimalPart.padEnd(scale, '0')}`);
+}
+
+function roundDivision(numerator, denominator) {
+  if (denominator <= 0n) {
+    throw httpError(400, 'No es posible calcular el costo promedio');
+  }
+  return (numerator + denominator / 2n) / denominator;
 }
 
 function calculateLine(data) {
@@ -380,8 +403,177 @@ async function removeItem(rawPurchaseId, rawItemId, actor) {
   });
 }
 
+function validateConfirmationData(purchase, items, products) {
+  const productById = new Map(
+    products.map((product) => [product.id_producto, product]),
+  );
+  const seenProducts = new Set();
+  let subtotal = 0n;
+  let discount = 0n;
+  let tax = 0n;
+
+  const calculations = items.map((item) => {
+    if (seenProducts.has(item.id_producto)) {
+      throw httpError(400, 'La compra contiene productos repetidos');
+    }
+    seenProducts.add(item.id_producto);
+
+    const product = productById.get(item.id_producto);
+    if (!product)
+      throw httpError(400, 'La compra contiene un producto inexistente');
+    if (product.estado !== 'activo') {
+      throw httpError(400, 'Todos los productos deben estar activos');
+    }
+
+    const quantity = decimalToUnits(item.cantidad, 3, 'cantidad');
+    const unitCost = decimalToUnits(item.costo_unitario, 2, 'costo_unitario');
+    const lineSubtotal = decimalToUnits(item.subtotal, 2, 'subtotal');
+    const lineDiscount = decimalToUnits(item.descuento, 2, 'descuento');
+    const lineTax = decimalToUnits(item.impuesto, 2, 'impuesto');
+    if (quantity <= 0n || unitCost < 0n || lineDiscount < 0n || lineTax < 0n) {
+      throw httpError(400, 'La compra contiene valores de detalle inválidos');
+    }
+    if (!product.permite_decimales && quantity % 1000n !== 0n) {
+      throw httpError(
+        400,
+        'La compra contiene una cantidad incompatible con su unidad',
+      );
+    }
+    const expectedSubtotal = (quantity * unitCost + 500n) / 1000n;
+    if (lineSubtotal !== expectedSubtotal || lineDiscount > lineSubtotal) {
+      throw httpError(
+        400,
+        'La compra contiene totales de detalle inconsistentes',
+      );
+    }
+    subtotal += lineSubtotal;
+    discount += lineDiscount;
+    tax += lineTax;
+
+    const previousStock = decimalToUnits(product.existencia, 3, 'existencia');
+    const previousAverageCost = decimalToUnits(
+      product.costo_promedio,
+      2,
+      'costo_promedio',
+    );
+    const newStock = previousStock + quantity;
+    if (newStock < 0n || newStock > MAX_STOCK_MILLIS) {
+      throw httpError(
+        400,
+        'La existencia resultante está fuera del rango permitido',
+      );
+    }
+    const newAverageCost =
+      previousStock === 0n
+        ? unitCost
+        : roundDivision(
+            previousStock * previousAverageCost + quantity * unitCost,
+            newStock,
+          );
+    if (newAverageCost < 0n || newAverageCost > MAX_MONEY_CENTS) {
+      throw httpError(
+        400,
+        'El costo promedio resultante está fuera del rango permitido',
+      );
+    }
+    return {
+      productId: item.id_producto,
+      quantity: formatMillis(quantity),
+      previousStock: formatMillis(previousStock),
+      newStock: formatMillis(newStock),
+      newAverageCost: formatCents(newAverageCost),
+    };
+  });
+
+  const total = subtotal - discount + tax;
+  const storedTotals = {
+    subtotal: decimalToUnits(purchase.subtotal, 2, 'subtotal'),
+    discount: decimalToUnits(purchase.descuento, 2, 'descuento'),
+    tax: decimalToUnits(purchase.impuesto, 2, 'impuesto'),
+    total: decimalToUnits(purchase.total, 2, 'total'),
+  };
+  if (
+    subtotal !== storedTotals.subtotal ||
+    discount !== storedTotals.discount ||
+    tax !== storedTotals.tax ||
+    total !== storedTotals.total
+  ) {
+    throw httpError(400, 'Los totales de la compra son inconsistentes');
+  }
+  return calculations;
+}
+
+async function confirmPurchase(rawPurchaseId, actor) {
+  const purchaseId = validateId(rawPurchaseId);
+  return runTransaction(async (connection) => {
+    const purchase = await purchaseRepository.findByIdForUpdate(
+      connection,
+      purchaseId,
+    );
+    if (!purchase) throw purchaseNotFoundError();
+    ensureDraft(purchase);
+
+    const supplier = await purchaseRepository.findSupplierForUpdate(
+      connection,
+      purchase.id_proveedor,
+    );
+    if (!supplier || supplier.estado !== 'activo') {
+      throw httpError(400, 'El proveedor debe estar activo');
+    }
+
+    const items = await purchaseRepository.getConfirmationItemsForUpdate(
+      connection,
+      purchaseId,
+    );
+    if (items.length === 0) {
+      throw httpError(400, 'La compra debe contener al menos una línea');
+    }
+
+    const productIds = [...new Set(items.map((item) => item.id_producto))].sort(
+      (left, right) => left - right,
+    );
+    const products = await purchaseRepository.lockProductsForUpdate(
+      connection,
+      productIds,
+    );
+    const calculations = validateConfirmationData(purchase, items, products);
+
+    for (const calculation of calculations) {
+      await purchaseRepository.updateProductInventory(
+        connection,
+        calculation.productId,
+        calculation.newStock,
+        calculation.newAverageCost,
+      );
+      await purchaseRepository.createInventoryMovement(connection, {
+        ...calculation,
+        purchaseId,
+        userId: actor.userId,
+      });
+    }
+
+    if (
+      (await purchaseRepository.markAsReceived(connection, purchaseId)) !== 1
+    ) {
+      throw httpError(409, 'La compra ya no puede confirmarse');
+    }
+    const confirmedPurchase = await hydratePurchase(connection, purchaseId);
+    await purchaseRepository.createAudit(connection, {
+      userId: actor.userId,
+      action: 'confirmar',
+      entity: 'compras',
+      entityId: purchaseId,
+      previousData: purchaseAuditSnapshot(purchase),
+      newData: purchaseAuditSnapshot(confirmedPurchase),
+      ipAddress: actor.ipAddress,
+    });
+    return confirmedPurchase;
+  });
+}
+
 module.exports = {
   addItem,
+  confirmPurchase,
   createPurchase,
   getPurchase,
   listPurchases,

@@ -20,6 +20,11 @@ router.post(
   requirePermission('compras.crear'),
   purchaseController.createPurchase,
 );
+router.post(
+  '/:id/confirm',
+  requirePermission('compras.confirmar'),
+  purchaseController.confirmPurchase,
+);
 router.put(
   '/:id',
   requirePermission('compras.crear'),
