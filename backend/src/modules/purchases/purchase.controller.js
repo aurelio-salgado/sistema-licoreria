@@ -46,6 +46,19 @@ async function confirmPurchase(req, res, next) {
   }
 }
 
+async function cancelPurchase(req, res, next) {
+  try {
+    const purchase = await purchaseService.cancelPurchase(
+      req.params.id,
+      req.body,
+      getActor(req),
+    );
+    res.status(200).json({ success: true, data: { purchase } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function updatePurchase(req, res, next) {
   try {
     const purchase = await purchaseService.updatePurchase(
@@ -101,6 +114,7 @@ async function removeItem(req, res, next) {
 
 module.exports = {
   addItem,
+  cancelPurchase,
   confirmPurchase,
   createPurchase,
   getPurchase,

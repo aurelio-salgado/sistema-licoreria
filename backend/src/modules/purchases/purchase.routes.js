@@ -25,6 +25,11 @@ router.post(
   requirePermission('compras.confirmar'),
   purchaseController.confirmPurchase,
 );
+router.post(
+  '/:id/cancel',
+  requirePermission('compras.anular'),
+  purchaseController.cancelPurchase,
+);
 router.put(
   '/:id',
   requirePermission('compras.crear'),

@@ -209,7 +209,19 @@ function validateListQuery(query) {
   return { page, limit, status, supplierId, dateFrom, dateTo };
 }
 
+function validateCancellationInput(body) {
+  if (typeof body?.motivo !== 'string' || !body.motivo.trim()) {
+    throw validationError('El motivo de anulación es obligatorio');
+  }
+  const reason = body.motivo.trim();
+  if (Buffer.byteLength(reason, 'utf8') > 65535) {
+    throw validationError('El motivo de anulación supera el tamaño permitido');
+  }
+  return { reason };
+}
+
 module.exports = {
+  validateCancellationInput,
   validateId: (value, label = 'El id') => parsePositiveInteger(value, label),
   validateItemInput,
   validateListQuery,

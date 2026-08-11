@@ -1,6 +1,7 @@
 const pool = require('../../config/database');
 const purchaseRepository = require('./purchase.repository');
 const {
+  validateCancellationInput,
   validateId,
   validateItemInput,
   validateListQuery,
@@ -571,8 +572,129 @@ async function confirmPurchase(rawPurchaseId, actor) {
   });
 }
 
+function buildCancellationObservation(currentObservation, reason) {
+  const cancellationText = `[ANULACIÓN] ${reason}`;
+  const observation =
+    typeof currentObservation === 'string' && currentObservation.trim()
+      ? `${currentObservation}\n${cancellationText}`
+      : cancellationText;
+  if (Buffer.byteLength(observation, 'utf8') > 65535) {
+    throw httpError(
+      400,
+      'La observación y el motivo de anulación superan el tamaño permitido',
+    );
+  }
+  return observation;
+}
+
+function calculateCancellation(items, products) {
+  const productById = new Map(
+    products.map((product) => [product.id_producto, product]),
+  );
+  const seenProducts = new Set();
+  const calculations = [];
+
+  for (const item of items) {
+    if (seenProducts.has(item.id_producto)) {
+      throw httpError(400, 'La compra contiene productos repetidos');
+    }
+    seenProducts.add(item.id_producto);
+    const product = productById.get(item.id_producto);
+    if (!product) {
+      throw httpError(400, 'La compra contiene un producto inexistente');
+    }
+    const quantity = decimalToUnits(item.cantidad, 3, 'cantidad');
+    const previousStock = decimalToUnits(product.existencia, 3, 'existencia');
+    if (quantity <= 0n) {
+      throw httpError(400, 'La compra contiene una cantidad inválida');
+    }
+    if (previousStock < quantity) {
+      throw httpError(
+        409,
+        'No hay existencia suficiente para anular la compra',
+      );
+    }
+    calculations.push({
+      productId: item.id_producto,
+      quantity: formatMillis(quantity),
+      previousStock: formatMillis(previousStock),
+      newStock: formatMillis(previousStock - quantity),
+    });
+  }
+  return calculations;
+}
+
+async function cancelPurchase(rawPurchaseId, rawData, actor) {
+  const purchaseId = validateId(rawPurchaseId);
+  const { reason } = validateCancellationInput(rawData);
+  return runTransaction(async (connection) => {
+    const purchase = await purchaseRepository.findByIdForUpdate(
+      connection,
+      purchaseId,
+    );
+    if (!purchase) throw purchaseNotFoundError();
+    if (purchase.estado !== 'recibida') {
+      throw httpError(409, 'Solo las compras recibidas pueden anularse');
+    }
+
+    const observation = buildCancellationObservation(
+      purchase.observacion,
+      reason,
+    );
+    const items = await purchaseRepository.getConfirmationItemsForUpdate(
+      connection,
+      purchaseId,
+    );
+    if (items.length === 0) {
+      throw httpError(400, 'La compra no contiene líneas para revertir');
+    }
+    const productIds = [...new Set(items.map((item) => item.id_producto))].sort(
+      (left, right) => left - right,
+    );
+    const products = await purchaseRepository.lockProductsForUpdate(
+      connection,
+      productIds,
+    );
+    const calculations = calculateCancellation(items, products);
+
+    for (const calculation of calculations) {
+      await purchaseRepository.updateProductStock(
+        connection,
+        calculation.productId,
+        calculation.newStock,
+      );
+      await purchaseRepository.createCancellationMovement(connection, {
+        ...calculation,
+        purchaseId,
+        userId: actor.userId,
+      });
+    }
+    if (
+      (await purchaseRepository.markAsCancelled(
+        connection,
+        purchaseId,
+        observation,
+      )) !== 1
+    ) {
+      throw httpError(409, 'La compra ya no puede anularse');
+    }
+    const cancelledPurchase = await hydratePurchase(connection, purchaseId);
+    await purchaseRepository.createAudit(connection, {
+      userId: actor.userId,
+      action: 'anular',
+      entity: 'compras',
+      entityId: purchaseId,
+      previousData: purchaseAuditSnapshot(purchase),
+      newData: purchaseAuditSnapshot(cancelledPurchase),
+      ipAddress: actor.ipAddress,
+    });
+    return cancelledPurchase;
+  });
+}
+
 module.exports = {
   addItem,
+  cancelPurchase,
   confirmPurchase,
   createPurchase,
   getPurchase,

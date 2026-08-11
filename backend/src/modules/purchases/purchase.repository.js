@@ -91,7 +91,7 @@ async function findById(executor, purchaseId) {
 async function findByIdForUpdate(connection, purchaseId) {
   const [rows] = await connection.execute(
     `SELECT id_compra, numero_compra, id_proveedor, id_usuario, estado,
-            subtotal, descuento, impuesto, total
+            subtotal, descuento, impuesto, total, observacion
      FROM compras WHERE id_compra = ? LIMIT 1 FOR UPDATE`,
     [purchaseId],
   );
@@ -365,6 +365,45 @@ async function markAsReceived(connection, purchaseId) {
   return result.affectedRows;
 }
 
+async function updateProductStock(connection, productId, newStock) {
+  await connection.execute(
+    `UPDATE productos SET existencia = ?
+     WHERE id_producto = ?`,
+    [newStock, productId],
+  );
+}
+
+async function createCancellationMovement(connection, data) {
+  await connection.execute(
+    `INSERT INTO movimientos_inventario (
+       id_producto, tipo_movimiento, naturaleza, cantidad,
+       existencia_anterior, existencia_posterior, tipo_referencia,
+       id_referencia, motivo, id_usuario, fecha_movimiento
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      data.productId,
+      'anulacion_compra',
+      'salida',
+      data.quantity,
+      data.previousStock,
+      data.newStock,
+      'compra',
+      data.purchaseId,
+      'Anulación de compra',
+      data.userId,
+    ],
+  );
+}
+
+async function markAsCancelled(connection, purchaseId, observation) {
+  const [result] = await connection.execute(
+    `UPDATE compras SET estado = ?, observacion = ?
+     WHERE id_compra = ? AND estado = ?`,
+    ['anulada', observation, purchaseId, 'recibida'],
+  );
+  return result.affectedRows;
+}
+
 async function updateTotals(connection, purchaseId, totals) {
   await connection.execute(
     `UPDATE compras SET subtotal = ?, descuento = ?, impuesto = ?, total = ?
@@ -397,6 +436,7 @@ module.exports = {
   count,
   create,
   createAudit,
+  createCancellationMovement,
   createItem,
   deleteItem,
   findActiveProductForUpdate,
@@ -413,9 +453,11 @@ module.exports = {
   listItems,
   lockProductsForUpdate,
   markAsReceived,
+  markAsCancelled,
   update,
   updateItem,
   updateProductInventory,
+  updateProductStock,
   updateTotals,
   createInventoryMovement,
 };
