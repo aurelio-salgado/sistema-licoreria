@@ -10,6 +10,7 @@ const categoryRoutes = require('./modules/categories/category.routes');
 const clientRoutes = require('./modules/clients/client.routes');
 const healthRoutes = require('./modules/health/health.routes');
 const productRoutes = require('./modules/products/product.routes');
+const purchaseRoutes = require('./modules/purchases/purchase.routes');
 const supplierRoutes = require('./modules/suppliers/supplier.routes');
 const unitRoutes = require('./modules/units/unit.routes');
 const notFoundHandler = require('./middlewares/notFoundHandler');
@@ -32,6 +33,7 @@ app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/clients', clientRoutes);
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/purchases', purchaseRoutes);
 app.use('/api/v1/suppliers', supplierRoutes);
 app.use('/api/v1/units', unitRoutes);
 
