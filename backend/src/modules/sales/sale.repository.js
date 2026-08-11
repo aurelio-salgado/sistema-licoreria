@@ -231,6 +231,106 @@ async function updateTotals(c, id, t) {
     [t.subtotal, t.discount, t.tax, t.total, id],
   );
 }
+async function confirmationItemsForUpdate(c, id) {
+  const [rows] = await c.execute(
+    'SELECT id_detalle_venta,id_producto,cantidad,costo_unitario_historico,precio_unitario,descuento,impuesto,subtotal FROM detalle_ventas WHERE id_venta=? ORDER BY id_producto FOR UPDATE',
+    [id],
+  );
+  return rows;
+}
+async function productsForUpdate(c, ids) {
+  if (!ids.length) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await c.execute(
+    `SELECT p.id_producto,p.estado,p.existencia,p.costo_promedio,um.permite_decimales FROM productos p INNER JOIN unidades_medida um ON um.id_unidad=p.id_unidad WHERE p.id_producto IN (${placeholders}) ORDER BY p.id_producto FOR UPDATE`,
+    ids,
+  );
+  return rows;
+}
+async function configurationForUpdate(c, keys) {
+  const placeholders = keys.map(() => '?').join(',');
+  const [rows] = await c.execute(
+    `SELECT id_configuracion,clave,valor,tipo_dato FROM configuracion WHERE clave IN (${placeholders}) ORDER BY clave FOR UPDATE`,
+    keys,
+  );
+  return rows;
+}
+async function paymentMethodsForUpdate(c, ids) {
+  if (!ids.length) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await c.execute(
+    `SELECT id_metodo_pago,requiere_referencia,es_efectivo,estado FROM metodos_pago WHERE id_metodo_pago IN (${placeholders}) ORDER BY id_metodo_pago FOR UPDATE`,
+    ids,
+  );
+  return rows;
+}
+async function openCashboxesForUpdate(c, userId) {
+  const [rows] = await c.execute(
+    "SELECT id_caja,id_usuario,estado FROM cajas WHERE id_usuario=? AND estado='abierta' ORDER BY id_caja FOR UPDATE",
+    [userId],
+  );
+  return rows;
+}
+async function updateConfirmedItem(
+  c,
+  saleId,
+  itemId,
+  historicalCost,
+  subtotal,
+) {
+  await c.execute(
+    'UPDATE detalle_ventas SET costo_unitario_historico=?,subtotal=? WHERE id_venta=? AND id_detalle_venta=?',
+    [historicalCost, subtotal, saleId, itemId],
+  );
+}
+async function updateStock(c, productId, stock) {
+  await c.execute('UPDATE productos SET existencia=? WHERE id_producto=?', [
+    stock,
+    productId,
+  ]);
+}
+async function createInventoryMovement(c, d) {
+  await c.execute(
+    `INSERT INTO movimientos_inventario(id_producto,tipo_movimiento,naturaleza,cantidad,existencia_anterior,existencia_posterior,tipo_referencia,id_referencia,motivo,id_usuario,fecha_movimiento) VALUES(?,?,?,?,?,?,?,?,?,?,NOW())`,
+    [
+      d.productId,
+      'venta',
+      'salida',
+      d.quantity,
+      d.previousStock,
+      d.newStock,
+      'venta',
+      d.saleId,
+      'ConfirmaciÃ³n de venta',
+      d.userId,
+    ],
+  );
+}
+async function createPayment(c, d) {
+  await c.execute(
+    'INSERT INTO pagos_venta(id_venta,id_metodo_pago,monto,referencia,monto_recibido,cambio) VALUES(?,?,?,?,?,?)',
+    [d.saleId, d.methodId, d.amount, d.reference, d.received, d.change],
+  );
+}
+async function updateSequence(c, id, value, userId) {
+  await c.execute(
+    'UPDATE configuracion SET valor=?,id_usuario_actualizacion=? WHERE id_configuracion=?',
+    [value, userId, id],
+  );
+}
+async function complete(c, id, invoiceNumber, cashboxId, t) {
+  const [result] = await c.execute(
+    "UPDATE ventas SET numero_factura=?,id_caja=?,subtotal=?,descuento=?,impuesto=?,total=?,estado='completada' WHERE id_venta=? AND estado='preparacion'",
+    [invoiceNumber, cashboxId, t.subtotal, t.discount, t.tax, t.total, id],
+  );
+  return result.affectedRows;
+}
+async function createCashMovement(c, d) {
+  await c.execute(
+    `INSERT INTO movimientos_caja(id_caja,id_venta,id_usuario,tipo_movimiento,naturaleza,afecta_efectivo,monto,concepto,fecha_movimiento) VALUES(?,?,?,'venta','entrada',TRUE,?,'Venta confirmada',NOW())`,
+    [d.cashboxId, d.saleId, d.userId, d.amount],
+  );
+}
 async function audit(c, d) {
   await c.execute(
     `INSERT INTO bitacora(id_usuario,modulo,accion,entidad,id_entidad,datos_anteriores,datos_nuevos,direccion_ip,resultado,fecha_evento) VALUES(?,?,?,?,?,?,?,?,?,NOW())`,
@@ -251,8 +351,14 @@ module.exports = {
   audit,
   amounts,
   count,
+  complete,
+  confirmationItemsForUpdate,
+  configurationForUpdate,
   create,
+  createCashMovement,
+  createInventoryMovement,
   createItem,
+  createPayment,
   deleteItem,
   findById,
   findByIdForUpdate,
@@ -264,7 +370,13 @@ module.exports = {
   findProductForUpdate,
   list,
   listItems,
+  openCashboxesForUpdate,
+  paymentMethodsForUpdate,
+  productsForUpdate,
   update,
+  updateConfirmedItem,
   updateItem,
+  updateSequence,
+  updateStock,
   updateTotals,
 };

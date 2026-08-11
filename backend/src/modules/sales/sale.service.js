@@ -2,6 +2,7 @@ const pool = require('../../config/database');
 const repo = require('./sale.repository');
 const {
   validateId,
+  validateConfirmInput,
   validateItemInput,
   validateListQuery,
   validateSaleInput,
@@ -17,7 +18,10 @@ const notFound = () => error(404, 'Venta no encontrada'),
   duplicateNumber = () => error(409, 'Ya existe una venta con ese número'),
   duplicateProduct = () => error(409, 'El producto ya existe en esta venta');
 function mapError(e) {
-  return e?.code === 'ER_DUP_ENTRY' ? duplicateNumber() : e;
+  if (e?.code !== 'ER_DUP_ENTRY') return e;
+  if (String(e.sqlMessage || '').includes('numero_factura'))
+    return error(409, 'El nÃºmero de factura ya existe');
+  return duplicateNumber();
 }
 async function transaction(fn) {
   const c = await pool.getConnection();
@@ -45,6 +49,20 @@ function cents(value) {
 function money(value) {
   const s = value.toString().padStart(3, '0');
   return `${s.slice(0, -2)}.${s.slice(-2)}`;
+}
+function decimalUnits(value, scale, field) {
+  const text = String(value);
+  const match = text.match(new RegExp(`^(\\d+)(?:\\.(\\d{1,${scale}}))?$`));
+  if (!match) throw error(400, `${field} no es vÃ¡lido`);
+  return (
+    BigInt(match[1]) * 10n ** BigInt(scale) +
+    BigInt((match[2] || '').padEnd(scale, '0'))
+  );
+}
+function quantity(value) {
+  const units = decimalUnits(value, 3, 'La cantidad');
+  const text = units.toString().padStart(4, '0');
+  return { units, fixed: `${text.slice(0, -3)}.${text.slice(-3)}` };
 }
 function line(data, unitPrice, historicalCost) {
   const price = cents(unitPrice),
@@ -286,8 +304,212 @@ async function removeItem(rawId, rawItemId, actor) {
     return result;
   });
 }
+async function confirmSale(rawId, body, actor) {
+  const id = validateId(rawId),
+    input = validateConfirmInput(body);
+  return transaction(async (c) => {
+    const sale = await repo.findByIdForUpdate(c, id);
+    if (!sale) throw notFound();
+    ensurePreparation(sale);
+
+    const items = await repo.confirmationItemsForUpdate(c, id);
+    if (!items.length)
+      throw error(400, 'La venta debe tener al menos un producto');
+    const productIds = items.map((i) => Number(i.id_producto));
+    if (new Set(productIds).size !== productIds.length)
+      throw duplicateProduct();
+
+    const currentClient = await repo.findClientForUpdate(c, sale.id_cliente);
+    if (!currentClient || currentClient.estado !== 'activo')
+      throw error(409, 'El cliente de la venta no estÃ¡ activo');
+
+    const products = await repo.productsForUpdate(
+      c,
+      [...productIds].sort((a, b) => a - b),
+    );
+    if (products.length !== productIds.length)
+      throw error(409, 'Uno o mÃ¡s productos ya no estÃ¡n disponibles');
+    const productMap = new Map(products.map((p) => [Number(p.id_producto), p]));
+    const calculatedItems = [];
+    for (const item of items) {
+      const p = productMap.get(Number(item.id_producto));
+      if (!p || p.estado !== 'activo')
+        throw error(409, 'Uno o mÃ¡s productos ya no estÃ¡n activos');
+      const q = quantity(item.cantidad),
+        stock = decimalUnits(p.existencia, 3, 'La existencia'),
+        price = cents(item.precio_unitario),
+        discount = cents(item.descuento),
+        tax = cents(item.impuesto),
+        gross = (q.units * price + 500n) / 1000n;
+      if (!p.permite_decimales && q.units % 1000n !== 0n)
+        throw error(400, 'La unidad de medida no permite cantidades decimales');
+      if (stock < q.units)
+        throw error(409, 'Existencia insuficiente para confirmar la venta');
+      if (discount > gross)
+        throw error(
+          400,
+          'El descuento no puede superar el subtotal de la lÃ­nea',
+        );
+      calculatedItems.push({
+        ...item,
+        quantity: q.fixed,
+        previousStock: quantity(p.existencia).fixed,
+        newStockUnits: stock - q.units,
+        historicalCost: money(cents(p.costo_promedio)),
+        subtotal: money(gross),
+        discount,
+        tax,
+      });
+      const ns = (stock - q.units).toString().padStart(4, '0');
+      calculatedItems.at(-1).newStock = `${ns.slice(0, -3)}.${ns.slice(-3)}`;
+    }
+    const t = totals(
+      calculatedItems.map((i) => ({
+        subtotal: i.subtotal,
+        descuento: money(i.discount),
+        impuesto: money(i.tax),
+      })),
+    );
+
+    if (t.total === '0.00' && input.payments.length)
+      throw error(400, 'Una venta con total cero no debe incluir pagos');
+    if (t.total !== '0.00' && !input.payments.length)
+      throw error(400, 'Debe indicar al menos un pago');
+    const paid = input.payments.reduce((sum, p) => sum + p.amount.units, 0n);
+    if (paid !== cents(t.total))
+      throw error(
+        400,
+        'La suma de los pagos debe coincidir con el total de la venta',
+      );
+
+    const methods = await repo.paymentMethodsForUpdate(
+      c,
+      input.payments.map((p) => p.methodId).sort((a, b) => a - b),
+    );
+    if (methods.length !== input.payments.length)
+      throw error(400, 'Uno o mÃ¡s mÃ©todos de pago no existen');
+    const methodMap = new Map(
+      methods.map((m) => [Number(m.id_metodo_pago), m]),
+    );
+    let cashApplied = 0n;
+    const payments = input.payments.map((payment) => {
+      const method = methodMap.get(payment.methodId);
+      if (method.estado !== 'activo')
+        throw error(400, 'El mÃ©todo de pago debe estar activo');
+      if (method.requiere_referencia && !payment.reference)
+        throw error(
+          400,
+          'La referencia es obligatoria para el mÃ©todo de pago',
+        );
+      if (method.es_efectivo) {
+        if (!payment.received || payment.received.units < payment.amount.units)
+          throw error(400, 'El monto recibido en efectivo es insuficiente');
+        cashApplied += payment.amount.units;
+        return {
+          ...payment,
+          change: money(payment.received.units - payment.amount.units),
+        };
+      }
+      if (payment.received !== null)
+        throw error(400, 'monto_recibido solo corresponde a pagos en efectivo');
+      return { ...payment, change: '0.00' };
+    });
+
+    const configKeys = [
+      'control_caja_activo',
+      'serie_comprobante',
+      'siguiente_numero_comprobante',
+    ];
+    const configRows = await repo.configurationForUpdate(c, configKeys);
+    const config = new Map(configRows.map((r) => [r.clave, r]));
+    if (config.size !== configKeys.length)
+      throw error(500, 'La configuraciÃ³n de facturaciÃ³n estÃ¡ incompleta');
+    const cashControlValue = config.get('control_caja_activo').valor;
+    if (!['true', 'false'].includes(cashControlValue))
+      throw error(500, 'La configuraciÃ³n de caja no es vÃ¡lida');
+    const cashControl = cashControlValue === 'true';
+    const series = String(config.get('serie_comprobante').valor).trim();
+    if (!series || series === 'SIN_CONFIGURAR')
+      throw error(409, 'La serie de comprobantes no estÃ¡ configurada');
+    const sequenceText = String(
+      config.get('siguiente_numero_comprobante').valor,
+    );
+    if (!/^\d+$/.test(sequenceText) || BigInt(sequenceText) < 1n)
+      throw error(500, 'La secuencia de comprobantes no es vÃ¡lida');
+    const invoiceNumber = `${series}-${sequenceText}`;
+    if (invoiceNumber.length > 50)
+      throw error(409, 'El nÃºmero de factura supera la longitud permitida');
+    let cashboxId = null;
+    if (cashControl) {
+      const cashboxes = await repo.openCashboxesForUpdate(c, sale.id_usuario);
+      if (cashboxes.length !== 1)
+        throw error(
+          409,
+          cashboxes.length
+            ? 'Existe mÃ¡s de una caja abierta para el vendedor'
+            : 'El vendedor no tiene una caja abierta',
+        );
+      cashboxId = cashboxes[0].id_caja;
+    }
+
+    for (const item of calculatedItems) {
+      await repo.updateConfirmedItem(
+        c,
+        id,
+        item.id_detalle_venta,
+        item.historicalCost,
+        item.subtotal,
+      );
+      await repo.updateStock(c, item.id_producto, item.newStock);
+      await repo.createInventoryMovement(c, {
+        productId: item.id_producto,
+        quantity: item.quantity,
+        previousStock: item.previousStock,
+        newStock: item.newStock,
+        saleId: id,
+        userId: actor.userId,
+      });
+    }
+    for (const payment of payments)
+      await repo.createPayment(c, {
+        saleId: id,
+        methodId: payment.methodId,
+        amount: payment.amount.fixed,
+        reference: payment.reference,
+        received: payment.received?.fixed || null,
+        change: payment.change,
+      });
+    await repo.updateSequence(
+      c,
+      config.get('siguiente_numero_comprobante').id_configuracion,
+      (BigInt(sequenceText) + 1n).toString(),
+      actor.userId,
+    );
+    if (!(await repo.complete(c, id, invoiceNumber, cashboxId, t)))
+      throw error(409, 'La venta ya no estÃ¡ disponible para confirmaciÃ³n');
+    if (cashControl && cashApplied > 0n)
+      await repo.createCashMovement(c, {
+        cashboxId,
+        saleId: id,
+        userId: actor.userId,
+        amount: money(cashApplied),
+      });
+    const result = await hydrate(c, id);
+    await repo.audit(c, {
+      userId: actor.userId,
+      action: 'confirmar',
+      entity: 'ventas',
+      entityId: id,
+      previousData: snapshot(sale),
+      newData: snapshot(result),
+      ipAddress: actor.ipAddress,
+    });
+    return result;
+  });
+}
 module.exports = {
   addItem,
+  confirmSale,
   createSale,
   getSale,
   listSales,

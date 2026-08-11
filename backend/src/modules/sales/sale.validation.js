@@ -158,7 +158,49 @@ function validateListQuery(query) {
     throw validationError('date_from no puede ser posterior a date_to');
   return { page, limit, status, clientId, sellerId, dateFrom, dateTo };
 }
+function validateConfirmInput(body) {
+  if (!body || !Array.isArray(body.pagos))
+    throw validationError('pagos debe ser una colección');
+  reject(
+    body,
+    ['subtotal', 'descuento', 'impuesto', 'total', 'estado', 'id_caja'],
+    'Los totales, estado y caja son controlados por el backend',
+  );
+  const methods = new Set();
+  const payments = body.pagos.map((payment, index) => {
+    const methodId = positiveInteger(
+      payment?.id_metodo_pago,
+      `pagos[${index}].id_metodo_pago`,
+    );
+    if (methods.has(methodId))
+      throw validationError('No se permite repetir un método de pago');
+    methods.add(methodId);
+    const amount = decimal(payment?.monto, `pagos[${index}].monto`, 12, 2, {
+      positive: true,
+    });
+    let reference = null;
+    if (payment?.referencia !== undefined && payment.referencia !== null) {
+      if (typeof payment.referencia !== 'string')
+        throw validationError(`pagos[${index}].referencia debe ser texto`);
+      reference = payment.referencia.trim() || null;
+      if (reference && reference.length > 120)
+        throw validationError('La referencia no puede superar 120 caracteres');
+    }
+    const received =
+      payment?.monto_recibido === undefined || payment.monto_recibido === null
+        ? null
+        : decimal(
+            payment.monto_recibido,
+            `pagos[${index}].monto_recibido`,
+            12,
+            2,
+          );
+    return { methodId, amount, reference, received };
+  });
+  return { payments };
+}
 module.exports = {
+  validateConfirmInput,
   validateId: (value, label = 'El id') => positiveInteger(value, label),
   validateItemInput,
   validateListQuery,
