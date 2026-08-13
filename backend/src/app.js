@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const env = require('./config/env');
 const authRoutes = require('./modules/auth/auth.routes');
 const brandRoutes = require('./modules/brands/brand.routes');
+const cashRoutes = require('./modules/cash/cash.routes');
 const categoryRoutes = require('./modules/categories/category.routes');
 const clientRoutes = require('./modules/clients/client.routes');
 const healthRoutes = require('./modules/health/health.routes');
@@ -30,6 +31,7 @@ app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/brands', brandRoutes);
+app.use('/api/v1/cash', cashRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/clients', clientRoutes);
 app.use('/api/v1/health', healthRoutes);
