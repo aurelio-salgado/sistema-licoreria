@@ -468,6 +468,30 @@ CREATE TABLE IF NOT EXISTS pagos_venta (
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
+-- Ajustes de inventario
+CREATE TABLE IF NOT EXISTS ajustes_inventario (
+    id_ajuste BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_producto BIGINT UNSIGNED NOT NULL,
+    id_usuario BIGINT UNSIGNED NOT NULL,
+    naturaleza VARCHAR(10) NOT NULL,
+    cantidad DECIMAL(12,3) NOT NULL,
+    existencia_anterior DECIMAL(12,3) NOT NULL,
+    existencia_posterior DECIMAL(12,3) NOT NULL,
+    motivo VARCHAR(500) NOT NULL,
+    fecha_ajuste DATETIME NOT NULL,
+    CONSTRAINT pk_ajustes_inventario PRIMARY KEY (id_ajuste),
+    CONSTRAINT chk_ajustes_inventario_naturaleza CHECK (naturaleza IN ('entrada', 'salida')),
+    CONSTRAINT chk_ajustes_inventario_cantidad CHECK (cantidad > 0),
+    CONSTRAINT chk_ajustes_inventario_existencia_anterior CHECK (existencia_anterior >= 0),
+    CONSTRAINT chk_ajustes_inventario_existencia_posterior CHECK (existencia_posterior >= 0),
+    CONSTRAINT fk_ajustes_inventario_producto FOREIGN KEY (id_producto) REFERENCES productos (id_producto) ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_ajustes_inventario_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON UPDATE RESTRICT ON DELETE RESTRICT,
+    INDEX idx_ajustes_inventario_producto_fecha (id_producto, fecha_ajuste),
+    INDEX idx_ajustes_inventario_usuario (id_usuario)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
 -- Movimientos de inventario
 CREATE TABLE IF NOT EXISTS movimientos_inventario (
     id_movimiento_inventario BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
