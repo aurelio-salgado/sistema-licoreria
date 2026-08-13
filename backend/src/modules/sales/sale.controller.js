@@ -98,8 +98,21 @@ async function confirmSale(req, res, next) {
     next(e);
   }
 }
+async function cancelSale(req, res, next) {
+  try {
+    res.status(200).json({
+      success: true,
+      data: {
+        sale: await service.cancelSale(req.params.id, req.body, actor(req)),
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+}
 module.exports = {
   addItem,
+  cancelSale,
   confirmSale,
   createSale,
   getSale,

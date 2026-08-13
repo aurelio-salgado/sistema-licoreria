@@ -78,7 +78,7 @@ async function findById(e, id) {
 }
 async function findByIdForUpdate(c, id) {
   const [rows] = await c.execute(
-    'SELECT id_venta,numero_venta,id_cliente,id_usuario,estado,subtotal,descuento,impuesto,total FROM ventas WHERE id_venta=? LIMIT 1 FOR UPDATE',
+    'SELECT id_venta,numero_venta,numero_factura,id_cliente,id_usuario,id_caja,fecha_venta,estado,subtotal,descuento,impuesto,total,motivo_anulacion,anulada_por,anulada_en FROM ventas WHERE id_venta=? LIMIT 1 FOR UPDATE',
     [id],
   );
   return rows[0] || null;
@@ -331,6 +331,54 @@ async function createCashMovement(c, d) {
     [d.cashboxId, d.saleId, d.userId, d.amount],
   );
 }
+async function cancellationPaymentsForUpdate(c, saleId) {
+  const [rows] = await c.execute(
+    'SELECT id_pago,id_metodo_pago,monto,referencia,monto_recibido,cambio FROM pagos_venta WHERE id_venta=? ORDER BY id_pago FOR UPDATE',
+    [saleId],
+  );
+  return rows;
+}
+async function cashboxForUpdate(c, cashboxId) {
+  const [rows] = await c.execute(
+    'SELECT id_caja,id_usuario,estado FROM cajas WHERE id_caja=? LIMIT 1 FOR UPDATE',
+    [cashboxId],
+  );
+  return rows[0] || null;
+}
+async function cashMovementsForUpdate(c, saleId) {
+  const [rows] = await c.execute(
+    'SELECT id_movimiento_caja,id_caja,tipo_movimiento,naturaleza,afecta_efectivo,monto FROM movimientos_caja WHERE id_venta=? ORDER BY id_movimiento_caja FOR UPDATE',
+    [saleId],
+  );
+  return rows;
+}
+async function createCancellationInventoryMovement(c, d) {
+  await c.execute(
+    `INSERT INTO movimientos_inventario(id_producto,tipo_movimiento,naturaleza,cantidad,existencia_anterior,existencia_posterior,tipo_referencia,id_referencia,motivo,id_usuario,fecha_movimiento) VALUES(?,'anulacion_venta','entrada',?,?,?,'venta',?,?,?,NOW())`,
+    [
+      d.productId,
+      d.quantity,
+      d.previousStock,
+      d.newStock,
+      d.saleId,
+      d.reason,
+      d.userId,
+    ],
+  );
+}
+async function createCancellationCashMovement(c, d) {
+  await c.execute(
+    `INSERT INTO movimientos_caja(id_caja,id_venta,id_usuario,tipo_movimiento,naturaleza,afecta_efectivo,monto,concepto,fecha_movimiento) VALUES(?,?,?,'anulacion','salida',TRUE,?,'AnulaciÃ³n de venta',NOW())`,
+    [d.cashboxId, d.saleId, d.userId, d.amount],
+  );
+}
+async function cancel(c, saleId, reason, userId) {
+  const [result] = await c.execute(
+    "UPDATE ventas SET estado='anulada',motivo_anulacion=?,anulada_por=?,anulada_en=NOW() WHERE id_venta=? AND estado='completada'",
+    [reason, userId, saleId],
+  );
+  return result.affectedRows;
+}
 async function audit(c, d) {
   await c.execute(
     `INSERT INTO bitacora(id_usuario,modulo,accion,entidad,id_entidad,datos_anteriores,datos_nuevos,direccion_ip,resultado,fecha_evento) VALUES(?,?,?,?,?,?,?,?,?,NOW())`,
@@ -350,11 +398,17 @@ async function audit(c, d) {
 module.exports = {
   audit,
   amounts,
+  cancel,
+  cancellationPaymentsForUpdate,
+  cashboxForUpdate,
+  cashMovementsForUpdate,
   count,
   complete,
   confirmationItemsForUpdate,
   configurationForUpdate,
   create,
+  createCancellationCashMovement,
+  createCancellationInventoryMovement,
   createCashMovement,
   createInventoryMovement,
   createItem,

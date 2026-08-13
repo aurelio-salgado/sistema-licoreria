@@ -12,6 +12,11 @@ router.post(
   requirePermission('ventas.crear'),
   controller.confirmSale,
 );
+router.post(
+  '/:id/cancel',
+  requirePermission('ventas.anular'),
+  controller.cancelSale,
+);
 router.put('/:id', requirePermission('ventas.crear'), controller.updateSale);
 router.post(
   '/:id/items',

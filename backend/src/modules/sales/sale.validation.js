@@ -199,7 +199,18 @@ function validateConfirmInput(body) {
   });
   return { payments };
 }
+function validateCancellationInput(body) {
+  if (typeof body?.motivo !== 'string' || !body.motivo.trim())
+    throw validationError('El motivo de anulaciÃ³n es obligatorio');
+  const reason = body.motivo.trim();
+  if (reason.length > 500)
+    throw validationError(
+      'El motivo de anulaciÃ³n no puede superar 500 caracteres',
+    );
+  return { reason };
+}
 module.exports = {
+  validateCancellationInput,
   validateConfirmInput,
   validateId: (value, label = 'El id') => positiveInteger(value, label),
   validateItemInput,

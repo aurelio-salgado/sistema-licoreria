@@ -1,6 +1,7 @@
 const pool = require('../../config/database');
 const repo = require('./sale.repository');
 const {
+  validateCancellationInput,
   validateId,
   validateConfirmInput,
   validateItemInput,
@@ -135,12 +136,17 @@ function snapshot(s) {
     ? {
         id_venta: s.id_venta,
         numero_venta: s.numero_venta,
+        numero_factura: s.numero_factura,
         id_cliente: s.cliente?.id_cliente ?? s.id_cliente,
+        id_caja: s.caja?.id_caja ?? s.id_caja,
         estado: s.estado,
         subtotal: s.subtotal,
         descuento: s.descuento,
         impuesto: s.impuesto,
         total: s.total,
+        motivo_anulacion: s.motivo_anulacion,
+        anulada_por: s.anulada_por,
+        anulada_en: s.anulada_en,
       }
     : null;
 }
@@ -507,8 +513,137 @@ async function confirmSale(rawId, body, actor) {
     return result;
   });
 }
+async function cancelSale(rawId, body, actor) {
+  const id = validateId(rawId),
+    { reason } = validateCancellationInput(body);
+  return transaction(async (c) => {
+    const sale = await repo.findByIdForUpdate(c, id);
+    if (!sale) throw notFound();
+    if (sale.estado !== 'completada')
+      throw error(409, 'Solo las ventas completadas pueden anularse');
+
+    const items = await repo.confirmationItemsForUpdate(c, id);
+    if (!items.length)
+      throw error(409, 'La venta no contiene detalles para restaurar');
+    const productIds = items.map((item) => Number(item.id_producto));
+    if (new Set(productIds).size !== productIds.length)
+      throw error(409, 'La venta contiene productos repetidos');
+    const products = await repo.productsForUpdate(
+      c,
+      [...productIds].sort((left, right) => left - right),
+    );
+    if (products.length !== productIds.length)
+      throw error(409, 'Uno o mÃ¡s productos de la venta no existen');
+    const productMap = new Map(
+      products.map((product) => [Number(product.id_producto), product]),
+    );
+    const restorations = items.map((item) => {
+      const product = productMap.get(Number(item.id_producto));
+      const soldQuantity = decimalUnits(item.cantidad, 3, 'La cantidad');
+      const previousStock = decimalUnits(
+        product.existencia,
+        3,
+        'La existencia',
+      );
+      const newStock = previousStock + soldQuantity;
+      if (soldQuantity <= 0n || newStock > MAX)
+        throw error(
+          409,
+          'La existencia resultante estÃ¡ fuera del rango permitido',
+        );
+      const previousText = previousStock.toString().padStart(4, '0');
+      const newText = newStock.toString().padStart(4, '0');
+      return {
+        productId: item.id_producto,
+        quantity: quantity(item.cantidad).fixed,
+        previousStock: `${previousText.slice(0, -3)}.${previousText.slice(-3)}`,
+        newStock: `${newText.slice(0, -3)}.${newText.slice(-3)}`,
+      };
+    });
+
+    const payments = await repo.cancellationPaymentsForUpdate(c, id);
+    const methodIds = [
+      ...new Set(payments.map((payment) => Number(payment.id_metodo_pago))),
+    ].sort((left, right) => left - right);
+    const methods = await repo.paymentMethodsForUpdate(c, methodIds);
+    if (methods.length !== methodIds.length)
+      throw error(409, 'Los mÃ©todos de pago histÃ³ricos son inconsistentes');
+    const methodMap = new Map(
+      methods.map((method) => [Number(method.id_metodo_pago), method]),
+    );
+    const cashApplied = payments.reduce(
+      (sum, payment) =>
+        methodMap.get(Number(payment.id_metodo_pago)).es_efectivo
+          ? sum + cents(payment.monto)
+          : sum,
+      0n,
+    );
+
+    let cashbox = null;
+    let cashMovements = [];
+    if (sale.id_caja !== null) {
+      cashbox = await repo.cashboxForUpdate(c, sale.id_caja);
+      if (!cashbox) throw error(409, 'La caja asociada no existe');
+      if (Number(cashbox.id_usuario) !== Number(actor.userId))
+        throw error(403, 'Acceso denegado');
+      if (cashbox.estado !== 'abierta')
+        throw error(409, 'La caja asociada estÃ¡ cerrada');
+      cashMovements = await repo.cashMovementsForUpdate(c, id);
+      if (
+        cashMovements.some(
+          (movement) => movement.tipo_movimiento === 'anulacion',
+        )
+      )
+        throw error(409, 'La venta ya posee un movimiento de anulaciÃ³n');
+      if (cashApplied > 0n) {
+        const originals = cashMovements.filter(
+          (movement) =>
+            movement.tipo_movimiento === 'venta' &&
+            movement.naturaleza === 'entrada' &&
+            Boolean(movement.afecta_efectivo),
+        );
+        if (originals.length !== 1 || cents(originals[0].monto) !== cashApplied)
+          throw error(
+            409,
+            'El movimiento de efectivo original es inconsistente',
+          );
+      }
+    }
+
+    for (const restoration of restorations) {
+      await repo.updateStock(c, restoration.productId, restoration.newStock);
+      await repo.createCancellationInventoryMovement(c, {
+        ...restoration,
+        saleId: id,
+        reason,
+        userId: actor.userId,
+      });
+    }
+    if (cashbox && cashApplied > 0n)
+      await repo.createCancellationCashMovement(c, {
+        cashboxId: cashbox.id_caja,
+        saleId: id,
+        userId: actor.userId,
+        amount: money(cashApplied),
+      });
+    if (!(await repo.cancel(c, id, reason, actor.userId)))
+      throw error(409, 'La venta ya no puede anularse');
+    const result = await hydrate(c, id);
+    await repo.audit(c, {
+      userId: actor.userId,
+      action: 'anular',
+      entity: 'ventas',
+      entityId: id,
+      previousData: snapshot(sale),
+      newData: snapshot(result),
+      ipAddress: actor.ipAddress,
+    });
+    return result;
+  });
+}
 module.exports = {
   addItem,
+  cancelSale,
   confirmSale,
   createSale,
   getSale,
