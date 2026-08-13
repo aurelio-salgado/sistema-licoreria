@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const env = require('./config/env');
+const accessRoutes = require('./modules/access/access.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const brandRoutes = require('./modules/brands/brand.routes');
 const cashRoutes = require('./modules/cash/cash.routes');
@@ -16,6 +17,7 @@ const purchaseRoutes = require('./modules/purchases/purchase.routes');
 const saleRoutes = require('./modules/sales/sale.routes');
 const supplierRoutes = require('./modules/suppliers/supplier.routes');
 const unitRoutes = require('./modules/units/unit.routes');
+const userRoutes = require('./modules/users/user.routes');
 const notFoundHandler = require('./middlewares/notFoundHandler');
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -31,6 +33,8 @@ app.use(express.json());
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/roles', accessRoutes.roleRouter);
+app.use('/api/v1/permissions', accessRoutes.permissionRouter);
 app.use('/api/v1/brands', brandRoutes);
 app.use('/api/v1/cash', cashRoutes);
 app.use('/api/v1/categories', categoryRoutes);
@@ -42,6 +46,7 @@ app.use('/api/v1/purchases', purchaseRoutes);
 app.use('/api/v1/sales', saleRoutes);
 app.use('/api/v1/suppliers', supplierRoutes);
 app.use('/api/v1/units', unitRoutes);
+app.use('/api/v1/users', userRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
