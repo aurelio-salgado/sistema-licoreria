@@ -5,6 +5,7 @@ const morgan = require('morgan');
 
 const env = require('./config/env');
 const accessRoutes = require('./modules/access/access.routes');
+const auditRoutes = require('./modules/audit/audit.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const brandRoutes = require('./modules/brands/brand.routes');
 const cashRoutes = require('./modules/cash/cash.routes');
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/roles', accessRoutes.roleRouter);
 app.use('/api/v1/permissions', accessRoutes.permissionRouter);
 app.use('/api/v1/brands', brandRoutes);
