@@ -107,14 +107,13 @@ function validateSaleInput(body) {
 function validateItemInput(body) {
   reject(
     body,
-    ['precio_unitario', 'costo_unitario_historico', 'subtotal'],
-    'El precio, costo histórico y subtotal son calculados por el backend',
+    ['precio_unitario', 'costo_unitario_historico', 'subtotal', 'impuesto'],
+    'El precio, costo histórico, subtotal e impuesto son calculados por el backend',
   );
   return {
     productId: positiveInteger(body?.id_producto, 'id_producto'),
     quantity: decimal(body?.cantidad, 'cantidad', 12, 3, { positive: true }),
     discount: decimal(body?.descuento, 'descuento', 12, 2, { defaultValue: 0 }),
-    tax: decimal(body?.impuesto, 'impuesto', 12, 2, { defaultValue: 0 }),
   };
 }
 function validDate(value, name) {

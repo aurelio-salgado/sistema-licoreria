@@ -150,8 +150,8 @@ function validatePurchaseInput(body) {
 function validateItemInput(body) {
   rejectControlledFields(
     body,
-    ['subtotal'],
-    'El subtotal es calculado por el backend',
+    ['subtotal', 'impuesto'],
+    'El subtotal y el impuesto son calculados por el backend',
   );
   return {
     productId: parsePositiveInteger(body?.id_producto, 'id_producto'),
@@ -162,7 +162,6 @@ function validateItemInput(body) {
     discount: decimalToUnits(body?.descuento, 'descuento', 12, 2, {
       defaultValue: 0,
     }),
-    tax: decimalToUnits(body?.impuesto, 'impuesto', 12, 2, { defaultValue: 0 }),
   };
 }
 

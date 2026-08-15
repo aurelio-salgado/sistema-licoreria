@@ -306,6 +306,27 @@ async function getConfirmationItemsForUpdate(connection, purchaseId) {
   return rows;
 }
 
+async function configurationForUpdate(connection, keys) {
+  const placeholders = keys.map(() => '?').join(', ');
+  const [rows] = await connection.execute(
+    `SELECT id_configuracion, clave, valor, tipo_dato
+     FROM configuracion
+     WHERE clave IN (${placeholders})
+     ORDER BY clave
+     FOR UPDATE`,
+    keys,
+  );
+  return rows;
+}
+
+async function updateConfirmedItemAmounts(connection, itemId, data) {
+  await connection.execute(
+    `UPDATE detalle_compras SET subtotal = ?, impuesto = ?
+     WHERE id_detalle_compra = ?`,
+    [data.subtotal, data.tax, itemId],
+  );
+}
+
 async function lockProductsForUpdate(connection, productIds) {
   const placeholders = productIds.map(() => '?').join(', ');
   const [rows] = await connection.execute(
@@ -433,6 +454,7 @@ async function createAudit(connection, data) {
 }
 
 module.exports = {
+  configurationForUpdate,
   count,
   create,
   createAudit,
@@ -455,6 +477,7 @@ module.exports = {
   markAsReceived,
   markAsCancelled,
   update,
+  updateConfirmedItemAmounts,
   updateItem,
   updateProductInventory,
   updateProductStock,

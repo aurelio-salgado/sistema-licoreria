@@ -9,6 +9,12 @@ const {
   validateSaleInput,
 } = require('./sale.validation');
 const MAX = 999999999999n;
+const PERCENT_SCALE = 10000n;
+const FISCAL_CONFIGURATION_KEYS = [
+  'descuento_maximo',
+  'impuesto_activo',
+  'tasa_impuesto',
+];
 function error(statusCode, message) {
   const e = new Error(message);
   e.statusCode = statusCode;
@@ -65,14 +71,60 @@ function quantity(value) {
   const text = units.toString().padStart(4, '0');
   return { units, fixed: `${text.slice(0, -3)}.${text.slice(-3)}` };
 }
-function line(data, unitPrice, historicalCost) {
+function parsePercentage(value, key) {
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(String(value));
+  if (!match) throw error(500, `La configuracion ${key} no es valida`);
+  const units =
+    BigInt(match[1]) * 100n + BigInt((match[2] || '').padEnd(2, '0'));
+  if (units > 10000n) throw error(500, `La configuracion ${key} no es valida`);
+  return units;
+}
+function fiscalConfiguration(rows) {
+  const config = new Map(rows.map((row) => [row.clave, row]));
+  if (config.size !== FISCAL_CONFIGURATION_KEYS.length)
+    throw error(500, 'La configuracion fiscal esta incompleta');
+  const taxActive = config.get('impuesto_activo').valor;
+  if (!['true', 'false'].includes(taxActive))
+    throw error(500, 'La configuracion impuesto_activo no es valida');
+  return {
+    taxActive: taxActive === 'true',
+    taxRate: parsePercentage(
+      config.get('tasa_impuesto').valor,
+      'tasa_impuesto',
+    ),
+    maximumDiscount: parsePercentage(
+      config.get('descuento_maximo').valor,
+      'descuento_maximo',
+    ),
+  };
+}
+async function fiscalConfigurationForUpdate(c) {
+  return fiscalConfiguration(
+    await repo.configurationForUpdate(c, FISCAL_CONFIGURATION_KEYS),
+  );
+}
+function calculateTax(base, configuration) {
+  if (!configuration.taxActive) return 0n;
+  return (base * configuration.taxRate + PERCENT_SCALE / 2n) / PERCENT_SCALE;
+}
+function line(data, unitPrice, historicalCost, configuration) {
   const price = cents(unitPrice),
     gross = (data.quantity.units * price + 500n) / 1000n;
   if (gross > MAX)
     throw error(400, 'El subtotal de la línea está fuera del rango permitido');
-  if (data.discount.units > gross)
+  if (
+    data.discount.units * PERCENT_SCALE >
+    gross * configuration.maximumDiscount
+  )
     throw error(400, 'El descuento no puede superar el subtotal de la línea');
-  return { ...data, unitPrice, historicalCost, subtotal: money(gross) };
+  const tax = calculateTax(gross - data.discount.units, configuration);
+  return {
+    ...data,
+    unitPrice,
+    historicalCost,
+    tax: { fixed: money(tax), units: tax },
+    subtotal: money(gross),
+  };
 }
 function totals(rows) {
   let subtotal = 0n,
@@ -235,7 +287,8 @@ async function addItem(rawId, body, actor) {
     unitCheck(p, d);
     if (await repo.findItemByProduct(c, id, d.productId))
       throw duplicateProduct();
-    const calculated = line(d, p.precio_venta, p.costo_promedio),
+    const configuration = await fiscalConfigurationForUpdate(c),
+      calculated = line(d, p.precio_venta, p.costo_promedio, configuration),
       itemId = await repo.createItem(c, id, calculated);
     await recalculate(c, id);
     const result = await hydrate(c, id),
@@ -265,11 +318,13 @@ async function updateItem(rawId, rawItemId, body, actor) {
     unitCheck(p, d);
     if (await repo.findItemByProduct(c, id, d.productId, itemId))
       throw duplicateProduct();
-    const changed = Number(current.id_producto) !== Number(d.productId),
+    const configuration = await fiscalConfigurationForUpdate(c),
+      changed = Number(current.id_producto) !== Number(d.productId),
       calculated = line(
         d,
         changed ? p.precio_venta : current.precio_unitario,
         changed ? p.costo_promedio : current.costo_unitario_historico,
+        configuration,
       );
     await repo.updateItem(c, id, itemId, calculated);
     await recalculate(c, id);
@@ -335,6 +390,19 @@ async function confirmSale(rawId, body, actor) {
     );
     if (products.length !== productIds.length)
       throw error(409, 'Uno o mÃ¡s productos ya no estÃ¡n disponibles');
+    const configKeys = [
+      ...FISCAL_CONFIGURATION_KEYS,
+      'control_caja_activo',
+      'serie_comprobante',
+      'siguiente_numero_comprobante',
+    ];
+    const configRows = await repo.configurationForUpdate(c, configKeys);
+    const config = new Map(configRows.map((row) => [row.clave, row]));
+    if (config.size !== configKeys.length)
+      throw error(500, 'La configuracion requerida esta incompleta');
+    const fiscal = fiscalConfiguration(
+      configRows.filter((row) => FISCAL_CONFIGURATION_KEYS.includes(row.clave)),
+    );
     const productMap = new Map(products.map((p) => [Number(p.id_producto), p]));
     const calculatedItems = [];
     for (const item of items) {
@@ -345,17 +413,17 @@ async function confirmSale(rawId, body, actor) {
         stock = decimalUnits(p.existencia, 3, 'La existencia'),
         price = cents(item.precio_unitario),
         discount = cents(item.descuento),
-        tax = cents(item.impuesto),
         gross = (q.units * price + 500n) / 1000n;
       if (!p.permite_decimales && q.units % 1000n !== 0n)
         throw error(400, 'La unidad de medida no permite cantidades decimales');
       if (stock < q.units)
         throw error(409, 'Existencia insuficiente para confirmar la venta');
-      if (discount > gross)
+      if (discount * PERCENT_SCALE > gross * fiscal.maximumDiscount)
         throw error(
           400,
           'El descuento no puede superar el subtotal de la lÃ­nea',
         );
+      const tax = calculateTax(gross - discount, fiscal);
       calculatedItems.push({
         ...item,
         quantity: q.fixed,
@@ -421,13 +489,6 @@ async function confirmSale(rawId, body, actor) {
       return { ...payment, change: '0.00' };
     });
 
-    const configKeys = [
-      'control_caja_activo',
-      'serie_comprobante',
-      'siguiente_numero_comprobante',
-    ];
-    const configRows = await repo.configurationForUpdate(c, configKeys);
-    const config = new Map(configRows.map((r) => [r.clave, r]));
     if (config.size !== configKeys.length)
       throw error(500, 'La configuraciÃ³n de facturaciÃ³n estÃ¡ incompleta');
     const cashControlValue = config.get('control_caja_activo').valor;
@@ -465,6 +526,7 @@ async function confirmSale(rawId, body, actor) {
         item.id_detalle_venta,
         item.historicalCost,
         item.subtotal,
+        money(item.tax),
       );
       await repo.updateStock(c, item.id_producto, item.newStock);
       await repo.createInventoryMovement(c, {

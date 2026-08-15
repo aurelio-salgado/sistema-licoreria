@@ -277,10 +277,11 @@ async function updateConfirmedItem(
   itemId,
   historicalCost,
   subtotal,
+  tax,
 ) {
   await c.execute(
-    'UPDATE detalle_ventas SET costo_unitario_historico=?,subtotal=? WHERE id_venta=? AND id_detalle_venta=?',
-    [historicalCost, subtotal, saleId, itemId],
+    'UPDATE detalle_ventas SET costo_unitario_historico=?,subtotal=?,impuesto=? WHERE id_venta=? AND id_detalle_venta=?',
+    [historicalCost, subtotal, tax, saleId, itemId],
   );
 }
 async function updateStock(c, productId, stock) {

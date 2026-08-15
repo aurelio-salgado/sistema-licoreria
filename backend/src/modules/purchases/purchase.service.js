@@ -10,6 +10,12 @@ const {
 
 const MAX_MONEY_CENTS = 999999999999n;
 const MAX_STOCK_MILLIS = 999999999999n;
+const PERCENT_SCALE = 10000n;
+const FISCAL_CONFIGURATION_KEYS = [
+  'descuento_maximo',
+  'impuesto_activo',
+  'tasa_impuesto',
+];
 
 function httpError(statusCode, message) {
   const error = new Error(message);
@@ -60,7 +66,49 @@ function roundDivision(numerator, denominator) {
   return (numerator + denominator / 2n) / denominator;
 }
 
-function calculateLine(data) {
+function parsePercentage(value, key) {
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(String(value));
+  if (!match) throw httpError(500, `La configuracion ${key} no es valida`);
+  const units =
+    BigInt(match[1]) * 100n + BigInt((match[2] || '').padEnd(2, '0'));
+  if (units > 10000n)
+    throw httpError(500, `La configuracion ${key} no es valida`);
+  return units;
+}
+
+function parseFiscalConfiguration(rows) {
+  const values = new Map(rows.map((row) => [row.clave, row.valor]));
+  if (values.size !== FISCAL_CONFIGURATION_KEYS.length)
+    throw httpError(500, 'La configuracion fiscal esta incompleta');
+  const taxActive = values.get('impuesto_activo');
+  if (!['true', 'false'].includes(taxActive))
+    throw httpError(500, 'La configuracion impuesto_activo no es valida');
+  return {
+    taxActive: taxActive === 'true',
+    taxRate: parsePercentage(values.get('tasa_impuesto'), 'tasa_impuesto'),
+    maximumDiscount: parsePercentage(
+      values.get('descuento_maximo'),
+      'descuento_maximo',
+    ),
+  };
+}
+
+async function fiscalConfigurationForUpdate(connection) {
+  const rows = await purchaseRepository.configurationForUpdate(
+    connection,
+    FISCAL_CONFIGURATION_KEYS,
+  );
+  return parseFiscalConfiguration(rows);
+}
+
+function calculateTax(baseCents, configuration) {
+  if (!configuration.taxActive) return 0n;
+  return (
+    (baseCents * configuration.taxRate + PERCENT_SCALE / 2n) / PERCENT_SCALE
+  );
+}
+
+function calculateLine(data, configuration) {
   const grossCents = (data.quantity.units * data.unitCost.units + 500n) / 1000n;
   if (grossCents > MAX_MONEY_CENTS) {
     throw httpError(
@@ -68,13 +116,21 @@ function calculateLine(data) {
       'El subtotal de la línea está fuera del rango permitido',
     );
   }
-  if (data.discount.units > grossCents) {
+  if (
+    data.discount.units * PERCENT_SCALE >
+    grossCents * configuration.maximumDiscount
+  ) {
     throw httpError(
       400,
       'El descuento no puede superar el subtotal de la línea',
     );
   }
-  return { ...data, subtotal: formatCents(grossCents) };
+  const tax = calculateTax(grossCents - data.discount.units, configuration);
+  return {
+    ...data,
+    tax: { fixed: formatCents(tax), units: tax },
+    subtotal: formatCents(grossCents),
+  };
 }
 
 function calculateTotals(rows) {
@@ -284,7 +340,7 @@ async function updatePurchase(rawId, rawData, actor) {
 
 async function addItem(rawPurchaseId, rawData, actor) {
   const purchaseId = validateId(rawPurchaseId);
-  const data = calculateLine(validateItemInput(rawData));
+  const input = validateItemInput(rawData);
   return runTransaction(async (connection) => {
     const purchase = await purchaseRepository.findByIdForUpdate(
       connection,
@@ -292,7 +348,11 @@ async function addItem(rawPurchaseId, rawData, actor) {
     );
     if (!purchase) throw purchaseNotFoundError();
     ensureDraft(purchase);
-    await validateProduct(connection, data);
+    await validateProduct(connection, input);
+    const data = calculateLine(
+      input,
+      await fiscalConfigurationForUpdate(connection),
+    );
     if (
       await purchaseRepository.findItemByProduct(
         connection,
@@ -328,7 +388,7 @@ async function addItem(rawPurchaseId, rawData, actor) {
 async function updateItem(rawPurchaseId, rawItemId, rawData, actor) {
   const purchaseId = validateId(rawPurchaseId);
   const itemId = validateId(rawItemId, 'itemId');
-  const data = calculateLine(validateItemInput(rawData));
+  const input = validateItemInput(rawData);
   return runTransaction(async (connection) => {
     const purchase = await purchaseRepository.findByIdForUpdate(
       connection,
@@ -342,7 +402,11 @@ async function updateItem(rawPurchaseId, rawItemId, rawData, actor) {
       itemId,
     );
     if (!currentItem) throw itemNotFoundError();
-    await validateProduct(connection, data);
+    await validateProduct(connection, input);
+    const data = calculateLine(
+      input,
+      await fiscalConfigurationForUpdate(connection),
+    );
     if (
       await purchaseRepository.findItemByProduct(
         connection,
@@ -404,7 +468,7 @@ async function removeItem(rawPurchaseId, rawItemId, actor) {
   });
 }
 
-function validateConfirmationData(purchase, items, products) {
+function validateConfirmationData(items, products, configuration) {
   const productById = new Map(
     products.map((product) => [product.id_producto, product]),
   );
@@ -430,8 +494,7 @@ function validateConfirmationData(purchase, items, products) {
     const unitCost = decimalToUnits(item.costo_unitario, 2, 'costo_unitario');
     const lineSubtotal = decimalToUnits(item.subtotal, 2, 'subtotal');
     const lineDiscount = decimalToUnits(item.descuento, 2, 'descuento');
-    const lineTax = decimalToUnits(item.impuesto, 2, 'impuesto');
-    if (quantity <= 0n || unitCost < 0n || lineDiscount < 0n || lineTax < 0n) {
+    if (quantity <= 0n || unitCost < 0n || lineDiscount < 0n) {
       throw httpError(400, 'La compra contiene valores de detalle inválidos');
     }
     if (!product.permite_decimales && quantity % 1000n !== 0n) {
@@ -441,13 +504,21 @@ function validateConfirmationData(purchase, items, products) {
       );
     }
     const expectedSubtotal = (quantity * unitCost + 500n) / 1000n;
-    if (lineSubtotal !== expectedSubtotal || lineDiscount > lineSubtotal) {
+    if (
+      lineSubtotal !== expectedSubtotal ||
+      lineDiscount * PERCENT_SCALE >
+        expectedSubtotal * configuration.maximumDiscount
+    ) {
       throw httpError(
         400,
         'La compra contiene totales de detalle inconsistentes',
       );
     }
-    subtotal += lineSubtotal;
+    const lineTax = calculateTax(
+      expectedSubtotal - lineDiscount,
+      configuration,
+    );
+    subtotal += expectedSubtotal;
     discount += lineDiscount;
     tax += lineTax;
 
@@ -478,30 +549,37 @@ function validateConfirmationData(purchase, items, products) {
       );
     }
     return {
+      itemId: item.id_detalle_compra,
       productId: item.id_producto,
       quantity: formatMillis(quantity),
       previousStock: formatMillis(previousStock),
       newStock: formatMillis(newStock),
       newAverageCost: formatCents(newAverageCost),
+      subtotal: formatCents(expectedSubtotal),
+      tax: formatCents(lineTax),
     };
   });
 
   const total = subtotal - discount + tax;
-  const storedTotals = {
-    subtotal: decimalToUnits(purchase.subtotal, 2, 'subtotal'),
-    discount: decimalToUnits(purchase.descuento, 2, 'descuento'),
-    tax: decimalToUnits(purchase.impuesto, 2, 'impuesto'),
-    total: decimalToUnits(purchase.total, 2, 'total'),
-  };
   if (
-    subtotal !== storedTotals.subtotal ||
-    discount !== storedTotals.discount ||
-    tax !== storedTotals.tax ||
-    total !== storedTotals.total
+    [subtotal, discount, tax, total].some(
+      (value) => value < 0n || value > MAX_MONEY_CENTS,
+    )
   ) {
-    throw httpError(400, 'Los totales de la compra son inconsistentes');
+    throw httpError(
+      400,
+      'Los totales de la compra estan fuera del rango permitido',
+    );
   }
-  return calculations;
+  return {
+    calculations,
+    totals: {
+      subtotal: formatCents(subtotal),
+      discount: formatCents(discount),
+      tax: formatCents(tax),
+      total: formatCents(total),
+    },
+  };
 }
 
 async function confirmPurchase(rawPurchaseId, actor) {
@@ -537,9 +615,19 @@ async function confirmPurchase(rawPurchaseId, actor) {
       connection,
       productIds,
     );
-    const calculations = validateConfirmationData(purchase, items, products);
+    const configuration = await fiscalConfigurationForUpdate(connection);
+    const { calculations, totals } = validateConfirmationData(
+      items,
+      products,
+      configuration,
+    );
 
     for (const calculation of calculations) {
+      await purchaseRepository.updateConfirmedItemAmounts(
+        connection,
+        calculation.itemId,
+        calculation,
+      );
       await purchaseRepository.updateProductInventory(
         connection,
         calculation.productId,
@@ -552,6 +640,8 @@ async function confirmPurchase(rawPurchaseId, actor) {
         userId: actor.userId,
       });
     }
+
+    await purchaseRepository.updateTotals(connection, purchaseId, totals);
 
     if (
       (await purchaseRepository.markAsReceived(connection, purchaseId)) !== 1
