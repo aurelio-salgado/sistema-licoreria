@@ -234,13 +234,13 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-016 — Gestión de productos
 
-**Descripción:** El sistema permitirá listar, crear y modificar bebidas y productos complementarios autorizados, con categoría, marca, unidad, costo, precio, existencia mínima y estado.
+**Descripción:** El sistema permitirá listar, crear y modificar bebidas y productos complementarios autorizados, con categoría, marca, unidad, costo, precio, existencia mínima y estado. El costo promedio podrá establecerse inicialmente o corregirse administrativamente solo mientras la existencia sea cero; con existencia positiva no podrá alterarse desde el CRUD.
 
 **Actor principal:** Administrador.
 
 **Prioridad:** Alta.
 
-**Criterio básico de aceptación:** Los productos válidos se guardan y los costos, precios o existencias mínimas inválidos son rechazados.
+**Criterio básico de aceptación:** Los productos válidos se guardan y los costos, precios o existencias mínimas inválidos son rechazados. Omitir el costo promedio al editar conserva el valor vigente; las compras confirmadas constituyen su fuente normal de actualización operativa.
 
 ### RF-017 — Identificación y búsqueda de productos
 

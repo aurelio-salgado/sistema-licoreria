@@ -92,6 +92,43 @@ async function validateUniqueFields(
   }
 }
 
+function decimalToUnits(value, scale, fieldName) {
+  const match = new RegExp(`^(\\d+)(?:\\.(\\d{1,${scale}}))?$`).exec(
+    String(value ?? '').trim(),
+  );
+  if (!match) {
+    throw httpError(500, `${fieldName} almacenado no es válido`);
+  }
+  return (
+    BigInt(match[1]) * 10n ** BigInt(scale) +
+    BigInt((match[2] || '').padEnd(scale, '0'))
+  );
+}
+
+function resolveAverageCost(data, currentProduct) {
+  if (data.averageCost === undefined) {
+    return currentProduct.costo_promedio;
+  }
+  const currentCost = decimalToUnits(
+    currentProduct.costo_promedio,
+    2,
+    'El costo promedio',
+  );
+  const requestedCost = decimalToUnits(
+    data.averageCost,
+    2,
+    'El costo promedio',
+  );
+  const stock = decimalToUnits(currentProduct.existencia, 3, 'La existencia');
+  if (stock > 0n && requestedCost !== currentCost) {
+    throw httpError(
+      409,
+      'El costo promedio no puede modificarse mientras exista inventario',
+    );
+  }
+  return data.averageCost;
+}
+
 async function listProducts(rawQuery) {
   const filters = validateListQuery(rawQuery);
   const [products, total] = await Promise.all([
@@ -136,13 +173,14 @@ async function createProduct(rawData, actor) {
 
 async function updateProduct(rawId, rawData, actor) {
   const productId = validateId(rawId);
-  const data = validateProductInput(rawData);
+  const data = validateProductInput(rawData, { isUpdate: true });
   return runTransaction(async (connection) => {
     const currentProduct = await productRepository.findByIdForUpdate(
       connection,
       productId,
     );
     if (!currentProduct) throw productNotFoundError();
+    data.averageCost = resolveAverageCost(data, currentProduct);
     await validateCatalogs(connection, data);
     await validateUniqueFields(connection, data, productId);
     await productRepository.update(connection, productId, data);

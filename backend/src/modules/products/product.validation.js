@@ -91,12 +91,16 @@ function validateDecimal(value, options) {
   return (roundedValue / factor).toFixed(scale);
 }
 
-function validateProductInput(body) {
+function validateProductInput(body, { isUpdate = false } = {}) {
   if (Object.prototype.hasOwnProperty.call(body || {}, 'existencia')) {
     throw validationError(
       'La existencia no puede modificarse desde el CRUD de productos',
     );
   }
+  const hasAverageCost = Object.prototype.hasOwnProperty.call(
+    body || {},
+    'costo_promedio',
+  );
   return {
     code: validateRequiredText(body?.codigo, 'El código', 60),
     barcode: validateOptionalText(
@@ -109,12 +113,15 @@ function validateProductInput(body) {
     categoryId: parsePositiveInteger(body?.id_categoria, 'id_categoria'),
     brandId: parsePositiveInteger(body?.id_marca, 'id_marca'),
     unitId: parsePositiveInteger(body?.id_unidad, 'id_unidad'),
-    averageCost: validateDecimal(body?.costo_promedio, {
-      fieldName: 'costo_promedio',
-      precision: 12,
-      scale: 2,
-      defaultValue: 0,
-    }),
+    averageCost:
+      isUpdate && !hasAverageCost
+        ? undefined
+        : validateDecimal(body?.costo_promedio, {
+            fieldName: 'costo_promedio',
+            precision: 12,
+            scale: 2,
+            defaultValue: 0,
+          }),
     salePrice: validateDecimal(body?.precio_venta, {
       fieldName: 'precio_venta',
       precision: 12,

@@ -82,7 +82,6 @@ Si la consulta `SELECT 1` falla, responde `503` con un mensaje público saneado.
 | --- | --- | --- | --- |
 | POST | `/auth/login` | Público | Inicia sesión. |
 | GET | `/auth/me` | JWT | Devuelve la identidad vigente reconstruida por `authenticate`. |
-| GET | `/auth/check-permission` | JWT + `dashboard.ver` | Confirma el permiso usado por el dashboard. |
 
 ### `POST /auth/login`
 
@@ -115,7 +114,7 @@ Ambos campos son obligatorios; `nombre_usuario` admite hasta 80 caracteres. Un u
 }
 ```
 
-Nunca se devuelve `password_hash`. `/auth/me` responde `{ "user": { "id_usuario", "nombre_usuario", "roles" } }`; `/auth/check-permission` responde `{ "authorized": true }`.
+Nunca se devuelve `password_hash`. `/auth/me` responde `{ "user": { "id_usuario", "nombre_usuario", "roles" } }`.
 
 ## 4. Usuarios
 
@@ -255,7 +254,7 @@ Filtros: `page`, `limit`, `search`, `status`, `id_categoria`, `id_marca`. `searc
 
 Categoría, marca y unidad deben existir y estar activas. Código y código de barras opcional son únicos. Precio de venta debe ser mayor que cero. `existencia` está prohibida en este CRUD: solo cambia mediante compras, ventas, anulaciones o ajustes.
 
-Comportamiento real de costo: el CRUD sí acepta `costo_promedio` no negativo (por defecto `0` si se omite en el body completo); además, confirmar una compra lo recalcula ponderadamente. Los ajustes y las anulaciones no lo cambian. `porcentaje_impuesto` se conserva como dato del producto, pero no interviene en la política fiscal vigente: compras y ventas usan exclusivamente `impuesto_activo`, `tasa_impuesto` y `descuento_maximo` globales.
+Política de costo: `POST` acepta `costo_promedio` no negativo y usa `0.00` si se omite, siempre con existencia inicial cero. En `PUT` es opcional: omitirlo conserva el valor vigente; con existencia cero puede corregirse, y con existencia positiva solo se admite un valor monetariamente equivalente al actual. Durante la operación, confirmar una compra es la fuente normal que lo recalcula ponderadamente. Los ajustes y las anulaciones no lo cambian. `porcentaje_impuesto` se conserva como dato del producto, pero no interviene en la política fiscal vigente: compras y ventas usan exclusivamente `impuesto_activo`, `tasa_impuesto` y `descuento_maximo` globales.
 
 Respuesta de listado: `{ products, pagination }`; mutaciones/detalle: `{ product }`. Estado: `{ "estado": "inactivo" }`.
 
@@ -555,4 +554,4 @@ No se permiten campos adicionales. Claves editables y tipos:
 
 ## 18. Alcance implementado
 
-La API montada contiene 76 combinaciones método/path en los 17 módulos anteriores. Actualmente no existen routers de reportes, dashboard, respaldos ni restauraciones, aunque el seed reserve permisos para evoluciones futuras. No deben asumirse endpoints para esos módulos hasta que exista implementación real.
+La API montada contiene 75 combinaciones método/path en los 17 módulos anteriores. Actualmente no existen routers de reportes, dashboard, respaldos ni restauraciones, aunque el seed reserve permisos para evoluciones futuras. No deben asumirse endpoints para esos módulos hasta que exista implementación real.

@@ -288,7 +288,7 @@ El dashboard y los reportes se obtendrán mediante consultas sobre las tablas op
 - **Claves foráneas:** `id_categoria` → `categorias`; `id_marca` → `marcas`; `id_unidad` → `unidades_medida`.
 - **Restricciones únicas:** `codigo`; `codigo_barras` cuando no sea nulo.
 - **Índices recomendados:** `codigo`, `codigo_barras`, `nombre`, `estado`, `id_categoria`, `id_marca`.
-- **Reglas de integridad:** valores no negativos; precio positivo; una unidad principal; `existencia` solo cambia junto con un movimiento confirmado. Una compra recibida actualiza el costo promedio ponderado; su anulación revierte únicamente la existencia y no modifica automáticamente `costo_promedio`.
+- **Reglas de integridad:** valores no negativos; precio positivo; una unidad principal; `existencia` solo cambia junto con un movimiento confirmado. `costo_promedio` puede establecerse inicialmente o corregirse administrativamente mientras `existencia = 0`; omitirlo al editar conserva el valor vigente y, con existencia positiva, el CRUD no puede alterarlo. Una compra recibida constituye la fuente normal de actualización y recalcula el costo promedio ponderado; anulaciones y ajustes no lo modifican.
 - **Política de eliminación o desactivación:** desactivación lógica; productos con historia no se eliminan.
 
 El modelo actual no conserva `costo_promedio_anterior` ni un kardex valorizado. Por ello, una anulación de compra no intentará reconstruir algebraicamente la valoración ni alterará costos históricos de ventas. Los snapshots de costo o un kardex valorizado quedan como evolución futura y requerirán una decisión y ampliación de modelo expresas.

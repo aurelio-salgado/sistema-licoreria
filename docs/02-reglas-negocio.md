@@ -249,6 +249,8 @@ Cada regla utiliza el formato `RN-MOD-NNN`, donde `RN` significa regla de negoci
 
 **Validación:** El backend rechazará precios nulos o negativos y costos negativos.
 
+El costo promedio podrá establecerse al crear el producto y corregirse administrativamente cuando su existencia sea cero. Si existe inventario, el CRUD solo aceptará el mismo valor vigente y rechazará cualquier cambio; omitir el campo durante la edición conservará su valor. Las compras confirmadas serán la fuente normal de actualización operativa, mientras que ajustes y anulaciones no modificarán el costo promedio.
+
 ### RN-PRO-005 — Existencia mínima válida
 
 **Descripción:** La existencia mínima configurada para un producto será igual o mayor que cero.
