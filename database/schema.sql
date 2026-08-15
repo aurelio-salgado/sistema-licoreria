@@ -1,10 +1,3 @@
--- Base de datos
-CREATE DATABASE IF NOT EXISTS sistema_licoreria
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE sistema_licoreria;
-
 -- Usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

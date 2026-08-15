@@ -1,5 +1,3 @@
-USE sistema_licoreria;
-
 -- Roles iniciales
 INSERT IGNORE INTO roles (nombre, descripcion, es_sistema, estado)
 VALUES
