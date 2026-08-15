@@ -346,7 +346,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 **Prioridad:** Alta.
 
-**Criterio básico de aceptación:** Se aplican todos los cambios o ninguno ante un error, y la compra confirmada no se elimina físicamente.
+**Criterio básico de aceptación:** Se aplican todos los cambios o ninguno ante un error, y la compra confirmada no se elimina físicamente. La recepción actualiza el costo promedio ponderado vigente del producto.
 
 ### RF-027 — Consulta de compras
 
@@ -360,13 +360,13 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-028 — Anulación controlada de compra
 
-**Descripción:** El sistema permitirá anular una compra confirmada mediante permiso y motivo obligatorios, revirtiendo sus efectos de inventario en una transacción cuando exista disponibilidad suficiente para hacerlo.
+**Descripción:** El sistema permitirá anular una compra confirmada mediante permiso y motivo obligatorios, revirtiendo únicamente sus cantidades de inventario en una transacción cuando exista disponibilidad suficiente para hacerlo. La anulación no modificará automáticamente `productos.costo_promedio` ni los costos históricos de ventas posteriores.
 
 **Actor principal:** Administrador.
 
 **Prioridad:** Alta.
 
-**Criterio básico de aceptación:** La anulación conserva la compra, registra el motivo y no produce inventario negativo ni cambios parciales.
+**Criterio básico de aceptación:** La anulación conserva la compra, registra el motivo, disminuye la existencia y crea el movimiento inverso sin modificar `productos.costo_promedio`; no produce inventario negativo ni cambios parciales. La existencia de movimientos posteriores no impide por sí sola la anulación si continúa disponible la cantidad requerida.
 
 ### 9.11 Inventario
 
@@ -916,4 +916,4 @@ La documentación relacionada deberá reflejar el comportamiento implementado y 
 
 ## Decisiones pendientes de confirmación futura
 
-Sin ampliar el alcance aprobado, antes del diseño detallado deberán confirmarse: la tasa o las tasas de impuesto iniciales y sus reglas de redondeo; los límites y tipos de descuento; la matriz exacta de permisos por rol; los datos obligatorios de clientes y proveedores; el formato, serie y numeración inicial del comprobante; las reglas específicas para anular compras; el tratamiento de caja para pagos no efectivos; los formatos y columnas definitivos de reportes; la política de retención, ubicación, frecuencia y cifrado de respaldos; los objetivos cuantitativos de disponibilidad y recuperación; y si el comprobante interno deberá adaptarse posteriormente a requisitos fiscales.
+Sin ampliar el alcance aprobado, antes del diseño detallado deberán confirmarse: la tasa o las tasas de impuesto iniciales y sus reglas de redondeo; los límites y tipos de descuento; la matriz exacta de permisos por rol; los datos obligatorios de clientes y proveedores; el formato, serie y numeración inicial del comprobante; el tratamiento de caja para pagos no efectivos; los formatos y columnas definitivos de reportes; la política de retención, ubicación, frecuencia y cifrado de respaldos; los objetivos cuantitativos de disponibilidad y recuperación; y si el comprobante interno deberá adaptarse posteriormente a requisitos fiscales.

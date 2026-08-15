@@ -361,7 +361,7 @@ Cada regla utiliza el formato `RN-MOD-NNN`, donde `RN` significa regla de negoci
 
 ### RN-COM-004 — Confirmación transaccional
 
-**Descripción:** La confirmación, el encabezado, los detalles, el aumento de inventario y sus movimientos se ejecutarán en una sola transacción.
+**Descripción:** La confirmación, el encabezado, los detalles, el aumento de inventario, la actualización del costo promedio ponderado y sus movimientos se ejecutarán en una sola transacción.
 
 **Aplica a:** Confirmación de compras e inventario.
 
@@ -385,11 +385,11 @@ Cada regla utiliza el formato `RN-MOD-NNN`, donde `RN` significa regla de negoci
 
 ### RN-COM-007 — Reversión segura de compras
 
-**Descripción:** La anulación revertirá el inventario mediante una transacción y será rechazada si cualquiera de sus productos quedara con existencia negativa.
+**Descripción:** La anulación revertirá únicamente las cantidades de inventario mediante una transacción y será rechazada si cualquiera de sus productos quedara con existencia negativa. No modificará automáticamente `productos.costo_promedio`, no reconstruirá retrospectivamente la valoración y no alterará los costos históricos de ventas.
 
 **Aplica a:** Anulación de compras e inventario.
 
-**Validación:** El backend verificará las existencias antes de aplicar la reversión y completará todos los cambios o ninguno.
+**Validación:** El backend verificará las existencias antes de aplicar la reversión, disminuirá la existencia, registrará el movimiento inverso y completará todos los cambios o ninguno. No aplicará una reversión algebraica del costo ni rechazará la anulación solo por existir movimientos posteriores, siempre que haya existencia suficiente.
 
 ### 6.9 Inventario
 
@@ -843,14 +843,13 @@ Antes del diseño detallado o de las pruebas definitivas deberán aprobarse:
 5. Los datos obligatorios y reglas de normalización para clientes y proveedores.
 6. El criterio de comparación para nombres de categorías, nombres de usuario, correos, códigos e identificaciones fiscales.
 7. El formato, la serie, la numeración inicial y la presentación del comprobante interno.
-8. Las reglas operativas específicas para anular compras.
-9. El tratamiento detallado en caja de anulaciones y pagos no efectivos.
-10. Los métodos que exigirán referencia y el formato válido de cada referencia.
-11. Los formatos, columnas y filtros definitivos de los reportes y exportaciones.
-12. La política de ubicación, frecuencia, retención, cifrado y validación de respaldos.
-13. El mecanismo exacto para impedir operaciones incompatibles durante una restauración.
-14. Los objetivos cuantitativos de disponibilidad y recuperación.
-15. La eventual adaptación del comprobante interno a requisitos fiscales, si se aprueba ese alcance en el futuro.
+8. El tratamiento detallado en caja de anulaciones y pagos no efectivos.
+9. Los métodos que exigirán referencia y el formato válido de cada referencia.
+10. Los formatos, columnas y filtros definitivos de los reportes y exportaciones.
+11. La política de ubicación, frecuencia, retención, cifrado y validación de respaldos.
+12. El mecanismo exacto para impedir operaciones incompatibles durante una restauración.
+13. Los objetivos cuantitativos de disponibilidad y recuperación.
+14. La eventual adaptación del comprobante interno a requisitos fiscales, si se aprueba ese alcance en el futuro.
 
 ## 9. Matriz resumida de reglas críticas
 

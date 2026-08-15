@@ -288,8 +288,10 @@ El dashboard y los reportes se obtendrán mediante consultas sobre las tablas op
 - **Claves foráneas:** `id_categoria` → `categorias`; `id_marca` → `marcas`; `id_unidad` → `unidades_medida`.
 - **Restricciones únicas:** `codigo`; `codigo_barras` cuando no sea nulo.
 - **Índices recomendados:** `codigo`, `codigo_barras`, `nombre`, `estado`, `id_categoria`, `id_marca`.
-- **Reglas de integridad:** valores no negativos; precio positivo; una unidad principal; `existencia` solo cambia junto con un movimiento confirmado.
+- **Reglas de integridad:** valores no negativos; precio positivo; una unidad principal; `existencia` solo cambia junto con un movimiento confirmado. Una compra recibida actualiza el costo promedio ponderado; su anulación revierte únicamente la existencia y no modifica automáticamente `costo_promedio`.
 - **Política de eliminación o desactivación:** desactivación lógica; productos con historia no se eliminan.
+
+El modelo actual no conserva `costo_promedio_anterior` ni un kardex valorizado. Por ello, una anulación de compra no intentará reconstruir algebraicamente la valoración ni alterará costos históricos de ventas. Los snapshots de costo o un kardex valorizado quedan como evolución futura y requerirán una decisión y ampliación de modelo expresas.
 
 ### 7.10 `clientes`
 
@@ -395,7 +397,7 @@ El dashboard y los reportes se obtendrán mediante consultas sobre las tablas op
 - **Claves foráneas:** `id_compra` → `compras`; `id_producto` → `productos`.
 - **Restricciones únicas:** se recomienda impedir líneas duplicadas por `id_compra, id_producto`, salvo decisión de permitirlas.
 - **Índices recomendados:** `id_compra`, `id_producto`.
-- **Reglas de integridad:** una compra confirmable contiene al menos una línea; los valores no dependen del costo actual del producto.
+- **Reglas de integridad:** una compra confirmable contiene al menos una línea; los valores no dependen del costo actual del producto. El detalle conserva cantidad y costo unitario de compra, pero no el costo promedio anterior del producto.
 - **Política de eliminación o desactivación:** editable solo mientras la compra sea borrador; inmutable y no eliminable después de recibida o anulada.
 
 ### 7.14 `ventas`
@@ -857,22 +859,21 @@ Las relaciones desde `ventas` hacia `cajas`, desde `ventas` hacia `movimientos_c
 
 1. Tasa inicial de impuesto, rangos válidos y reglas de redondeo.
 2. Tipos, límites y rangos de descuentos.
-3. Política para calcular y actualizar `costo_promedio`, incluido el efecto de anulaciones.
-4. Datos obligatorios y normalización de clientes y proveedores.
-5. Formato, serie y numeración inicial de ventas, compras y comprobantes.
-6. Política de retención, ubicación, cifrado, validación y eliminación de archivos de respaldo.
-7. Uso de `ENUM`, restricciones `CHECK` o tablas catálogo para estados, tipos de movimientos y resultados.
-8. Criterio de comparación de valores únicos respecto de mayúsculas, espacios y acentos.
-9. Reglas de unicidad para documentos de proveedor, referencias de pago y líneas repetidas de detalle.
-10. Política de conservación histórica de cambios en `usuario_roles`, `rol_permisos` y `configuracion` sin agregar tablas fuera del alcance actual.
-11. Límite de intentos fallidos, duración del bloqueo y parámetros de seguridad.
-12. Métodos de pago que exigirán referencia y formato de esta.
-13. Mecanismo técnico para garantizar una sola caja abierta por usuario en MariaDB/MySQL.
-14. Tipos exactos de ajustes, referencias y movimientos de inventario y caja.
-15. Tratamiento exacto en caja para pagos no efectivos, anulaciones y devoluciones.
-16. Política para descartar físicamente borradores sin relaciones, si se permite.
-17. Retención de bitácora y nivel de detalle de los datos anteriores y nuevos.
-18. Procedimiento de exclusión operativa y recuperación ante una restauración fallida.
+3. Datos obligatorios y normalización de clientes y proveedores.
+4. Formato, serie y numeración inicial de ventas, compras y comprobantes.
+5. Política de retención, ubicación, cifrado, validación y eliminación de archivos de respaldo.
+6. Uso de `ENUM`, restricciones `CHECK` o tablas catálogo para estados, tipos de movimientos y resultados.
+7. Criterio de comparación de valores únicos respecto de mayúsculas, espacios y acentos.
+8. Reglas de unicidad para documentos de proveedor, referencias de pago y líneas repetidas de detalle.
+9. Política de conservación histórica de cambios en `usuario_roles`, `rol_permisos` y `configuracion` sin agregar tablas fuera del alcance actual.
+10. Límite de intentos fallidos, duración del bloqueo y parámetros de seguridad.
+11. Métodos de pago que exigirán referencia y formato de esta.
+12. Mecanismo técnico para garantizar una sola caja abierta por usuario en MariaDB/MySQL.
+13. Tipos exactos de ajustes, referencias y movimientos de inventario y caja.
+14. Tratamiento exacto en caja para pagos no efectivos, anulaciones y devoluciones.
+15. Política para descartar físicamente borradores sin relaciones, si se permite.
+16. Retención de bitácora y nivel de detalle de los datos anteriores y nuevos.
+17. Procedimiento de exclusión operativa y recuperación ante una restauración fallida.
 
 ## 16. Criterios de validación del modelo
 
