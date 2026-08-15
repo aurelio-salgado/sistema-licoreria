@@ -14,7 +14,7 @@ function httpError(statusCode, message) {
 function millis(value) {
   const s = String(value),
     m = /^(\d+)(?:\.(\d{1,3}))?$/.exec(s);
-  if (!m) throw httpError(500, 'La existencia almacenada no es vÃ¡lida');
+  if (!m) throw httpError(500, 'La existencia almacenada no es válida');
   return BigInt(m[1]) * 1000n + BigInt((m[2] || '').padEnd(3, '0'));
 }
 function format(n) {
@@ -71,7 +71,7 @@ async function adjust(body, actor) {
     const p = await repo.lockProduct(c, d.productId);
     if (!p) throw httpError(404, 'Producto no encontrado');
     if (p.estado !== 'activo')
-      throw httpError(409, 'El producto estÃ¡ inactivo');
+      throw httpError(409, 'El producto está inactivo');
     if (!p.permite_decimales && d.quantity.units % 1000n !== 0n)
       throw httpError(
         400,
@@ -87,7 +87,7 @@ async function adjust(body, actor) {
     if (next > MAX)
       throw httpError(
         409,
-        'La existencia resultante estÃ¡ fuera del rango permitido',
+        'La existencia resultante está fuera del rango permitido',
       );
     const data = {
       productId: d.productId,

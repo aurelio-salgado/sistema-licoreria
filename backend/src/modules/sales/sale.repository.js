@@ -302,7 +302,7 @@ async function createInventoryMovement(c, d) {
       d.newStock,
       'venta',
       d.saleId,
-      'ConfirmaciÃ³n de venta',
+      'Confirmación de venta',
       d.userId,
     ],
   );
@@ -372,7 +372,7 @@ async function createCancellationInventoryMovement(c, d) {
 }
 async function createCancellationCashMovement(c, d) {
   await c.execute(
-    `INSERT INTO movimientos_caja(id_caja,id_venta,id_usuario,tipo_movimiento,naturaleza,afecta_efectivo,monto,concepto,fecha_movimiento) VALUES(?,?,?,'anulacion','salida',TRUE,?,'AnulaciÃ³n de venta',NOW())`,
+    `INSERT INTO movimientos_caja(id_caja,id_venta,id_usuario,tipo_movimiento,naturaleza,afecta_efectivo,monto,concepto,fecha_movimiento) VALUES(?,?,?,'anulacion','salida',TRUE,?,'Anulación de venta',NOW())`,
     [d.cashboxId, d.saleId, d.userId, d.amount],
   );
 }

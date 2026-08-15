@@ -200,11 +200,11 @@ function validateConfirmInput(body) {
 }
 function validateCancellationInput(body) {
   if (typeof body?.motivo !== 'string' || !body.motivo.trim())
-    throw validationError('El motivo de anulaciÃ³n es obligatorio');
+    throw validationError('El motivo de anulación es obligatorio');
   const reason = body.motivo.trim();
   if (reason.length > 500)
     throw validationError(
-      'El motivo de anulaciÃ³n no puede superar 500 caracteres',
+      'El motivo de anulación no puede superar 500 caracteres',
     );
   return { reason };
 }

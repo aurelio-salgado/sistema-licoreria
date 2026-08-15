@@ -27,7 +27,7 @@ const notFound = () => error(404, 'Venta no encontrada'),
 function mapError(e) {
   if (e?.code !== 'ER_DUP_ENTRY') return e;
   if (String(e.sqlMessage || '').includes('numero_factura'))
-    return error(409, 'El nÃºmero de factura ya existe');
+    return error(409, 'El número de factura ya existe');
   return duplicateNumber();
 }
 async function transaction(fn) {
@@ -60,7 +60,7 @@ function money(value) {
 function decimalUnits(value, scale, field) {
   const text = String(value);
   const match = text.match(new RegExp(`^(\\d+)(?:\\.(\\d{1,${scale}}))?$`));
-  if (!match) throw error(400, `${field} no es vÃ¡lido`);
+  if (!match) throw error(400, `${field} no es válido`);
   return (
     BigInt(match[1]) * 10n ** BigInt(scale) +
     BigInt((match[2] || '').padEnd(scale, '0'))
@@ -382,14 +382,14 @@ async function confirmSale(rawId, body, actor) {
 
     const currentClient = await repo.findClientForUpdate(c, sale.id_cliente);
     if (!currentClient || currentClient.estado !== 'activo')
-      throw error(409, 'El cliente de la venta no estÃ¡ activo');
+      throw error(409, 'El cliente de la venta no está activo');
 
     const products = await repo.productsForUpdate(
       c,
       [...productIds].sort((a, b) => a - b),
     );
     if (products.length !== productIds.length)
-      throw error(409, 'Uno o mÃ¡s productos ya no estÃ¡n disponibles');
+      throw error(409, 'Uno o más productos ya no están disponibles');
     const configKeys = [
       ...FISCAL_CONFIGURATION_KEYS,
       'control_caja_activo',
@@ -408,7 +408,7 @@ async function confirmSale(rawId, body, actor) {
     for (const item of items) {
       const p = productMap.get(Number(item.id_producto));
       if (!p || p.estado !== 'activo')
-        throw error(409, 'Uno o mÃ¡s productos ya no estÃ¡n activos');
+        throw error(409, 'Uno o más productos ya no están activos');
       const q = quantity(item.cantidad),
         stock = decimalUnits(p.existencia, 3, 'La existencia'),
         price = cents(item.precio_unitario),
@@ -421,7 +421,7 @@ async function confirmSale(rawId, body, actor) {
       if (discount * PERCENT_SCALE > gross * fiscal.maximumDiscount)
         throw error(
           400,
-          'El descuento no puede superar el subtotal de la lÃ­nea',
+          'El descuento no puede superar el subtotal de la línea',
         );
       const tax = calculateTax(gross - discount, fiscal);
       calculatedItems.push({
@@ -461,7 +461,7 @@ async function confirmSale(rawId, body, actor) {
       input.payments.map((p) => p.methodId).sort((a, b) => a - b),
     );
     if (methods.length !== input.payments.length)
-      throw error(400, 'Uno o mÃ¡s mÃ©todos de pago no existen');
+      throw error(400, 'Uno o más métodos de pago no existen');
     const methodMap = new Map(
       methods.map((m) => [Number(m.id_metodo_pago), m]),
     );
@@ -469,11 +469,11 @@ async function confirmSale(rawId, body, actor) {
     const payments = input.payments.map((payment) => {
       const method = methodMap.get(payment.methodId);
       if (method.estado !== 'activo')
-        throw error(400, 'El mÃ©todo de pago debe estar activo');
+        throw error(400, 'El método de pago debe estar activo');
       if (method.requiere_referencia && !payment.reference)
         throw error(
           400,
-          'La referencia es obligatoria para el mÃ©todo de pago',
+          'La referencia es obligatoria para el método de pago',
         );
       if (method.es_efectivo) {
         if (!payment.received || payment.received.units < payment.amount.units)
@@ -490,22 +490,22 @@ async function confirmSale(rawId, body, actor) {
     });
 
     if (config.size !== configKeys.length)
-      throw error(500, 'La configuraciÃ³n de facturaciÃ³n estÃ¡ incompleta');
+      throw error(500, 'La configuración de facturación está incompleta');
     const cashControlValue = config.get('control_caja_activo').valor;
     if (!['true', 'false'].includes(cashControlValue))
-      throw error(500, 'La configuraciÃ³n de caja no es vÃ¡lida');
+      throw error(500, 'La configuración de caja no es válida');
     const cashControl = cashControlValue === 'true';
     const series = String(config.get('serie_comprobante').valor).trim();
     if (!series || series === 'SIN_CONFIGURAR')
-      throw error(409, 'La serie de comprobantes no estÃ¡ configurada');
+      throw error(409, 'La serie de comprobantes no está configurada');
     const sequenceText = String(
       config.get('siguiente_numero_comprobante').valor,
     );
     if (!/^\d+$/.test(sequenceText) || BigInt(sequenceText) < 1n)
-      throw error(500, 'La secuencia de comprobantes no es vÃ¡lida');
+      throw error(500, 'La secuencia de comprobantes no es válida');
     const invoiceNumber = `${series}-${sequenceText}`;
     if (invoiceNumber.length > 50)
-      throw error(409, 'El nÃºmero de factura supera la longitud permitida');
+      throw error(409, 'El número de factura supera la longitud permitida');
     let cashboxId = null;
     if (cashControl) {
       const cashboxes = await repo.openCashboxesForUpdate(c, sale.id_usuario);
@@ -513,7 +513,7 @@ async function confirmSale(rawId, body, actor) {
         throw error(
           409,
           cashboxes.length
-            ? 'Existe mÃ¡s de una caja abierta para el vendedor'
+            ? 'Existe más de una caja abierta para el vendedor'
             : 'El vendedor no tiene una caja abierta',
         );
       cashboxId = cashboxes[0].id_caja;
@@ -554,7 +554,7 @@ async function confirmSale(rawId, body, actor) {
       actor.userId,
     );
     if (!(await repo.complete(c, id, invoiceNumber, cashboxId, t)))
-      throw error(409, 'La venta ya no estÃ¡ disponible para confirmaciÃ³n');
+      throw error(409, 'La venta ya no está disponible para confirmación');
     if (cashControl && cashApplied > 0n)
       await repo.createCashMovement(c, {
         cashboxId,
@@ -595,7 +595,7 @@ async function cancelSale(rawId, body, actor) {
       [...productIds].sort((left, right) => left - right),
     );
     if (products.length !== productIds.length)
-      throw error(409, 'Uno o mÃ¡s productos de la venta no existen');
+      throw error(409, 'Uno o más productos de la venta no existen');
     const productMap = new Map(
       products.map((product) => [Number(product.id_producto), product]),
     );
@@ -611,7 +611,7 @@ async function cancelSale(rawId, body, actor) {
       if (soldQuantity <= 0n || newStock > MAX)
         throw error(
           409,
-          'La existencia resultante estÃ¡ fuera del rango permitido',
+          'La existencia resultante está fuera del rango permitido',
         );
       const previousText = previousStock.toString().padStart(4, '0');
       const newText = newStock.toString().padStart(4, '0');
@@ -629,7 +629,7 @@ async function cancelSale(rawId, body, actor) {
     ].sort((left, right) => left - right);
     const methods = await repo.paymentMethodsForUpdate(c, methodIds);
     if (methods.length !== methodIds.length)
-      throw error(409, 'Los mÃ©todos de pago histÃ³ricos son inconsistentes');
+      throw error(409, 'Los métodos de pago históricos son inconsistentes');
     const methodMap = new Map(
       methods.map((method) => [Number(method.id_metodo_pago), method]),
     );
@@ -666,7 +666,7 @@ async function cancelSale(rawId, body, actor) {
         throw error(
           409,
           actorCashboxes.length
-            ? 'Existe mÃ¡s de una caja abierta para el usuario anulador'
+            ? 'Existe más de una caja abierta para el usuario anulador'
             : 'El usuario anulador no tiene una caja abierta',
         );
       [compensationCashbox] = actorCashboxes;
@@ -676,7 +676,7 @@ async function cancelSale(rawId, body, actor) {
     if (
       cashMovements.some((movement) => movement.tipo_movimiento === 'anulacion')
     )
-      throw error(409, 'La venta ya posee un movimiento de anulaciÃ³n');
+      throw error(409, 'La venta ya posee un movimiento de anulación');
     if (cashApplied > 0n && sale.id_caja !== null) {
       const originals = cashMovements.filter(
         (movement) =>

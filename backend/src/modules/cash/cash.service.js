@@ -33,7 +33,7 @@ async function runTransaction(operation) {
       try {
         await connection.rollback();
       } catch {
-        /* El middleware global mantiene saneada la respuesta pÃºblica. */
+        /* El middleware global mantiene saneada la respuesta pública. */
       }
     }
     throw error;
@@ -45,7 +45,7 @@ async function runTransaction(operation) {
 function toCents(value, fieldName) {
   const normalized = String(value);
   if (!/^\d+(?:\.\d{1,2})?$/.test(normalized))
-    throw httpError(500, `${fieldName} almacenado no es vÃ¡lido`);
+    throw httpError(500, `${fieldName} almacenado no es válido`);
   const [integer, decimals = ''] = normalized.split('.');
   return BigInt(integer) * 100n + BigInt(decimals.padEnd(2, '0'));
 }
@@ -108,7 +108,7 @@ async function getCurrentCash(userId) {
   const rows = await cashRepository.findOpenByUser(pool, userId);
   if (!rows.length) throw cashNotFoundError();
   if (rows.length > 1)
-    throw httpError(409, 'Existe mÃ¡s de una caja abierta para el usuario');
+    throw httpError(409, 'Existe más de una caja abierta para el usuario');
   return rows[0];
 }
 
@@ -158,7 +158,7 @@ async function createMovement(rawId, rawData, actor) {
     );
     if (!cash) throw cashNotFoundError();
     if (cash.estado !== 'abierta')
-      throw httpError(409, 'La caja estÃ¡ cerrada');
+      throw httpError(409, 'La caja está cerrada');
     const movementId = await cashRepository.createMovement(
       connection,
       cashId,
@@ -190,10 +190,10 @@ function calculateExpected(openingAmount, movements) {
     const amount = toCents(movement.monto, 'monto');
     if (movement.naturaleza === 'entrada') expected += amount;
     else if (movement.naturaleza === 'salida') expected -= amount;
-    else throw httpError(500, 'La naturaleza de un movimiento no es vÃ¡lida');
+    else throw httpError(500, 'La naturaleza de un movimiento no es válida');
   }
   if (expected < -MAX_MONEY_CENTS || expected > MAX_MONEY_CENTS)
-    throw httpError(409, 'El monto esperado estÃ¡ fuera del rango permitido');
+    throw httpError(409, 'El monto esperado está fuera del rango permitido');
   return expected;
 }
 
@@ -208,12 +208,12 @@ async function closeCash(rawId, rawData, actor) {
     );
     if (!current) throw cashNotFoundError();
     if (current.estado !== 'abierta')
-      throw httpError(409, 'La caja ya estÃ¡ cerrada');
+      throw httpError(409, 'La caja ya está cerrada');
     const movements = await cashRepository.lockMovements(connection, cashId);
     const expected = calculateExpected(current.monto_apertura, movements);
     const difference = data.countedAmount.cents - expected;
     if (difference < -MAX_MONEY_CENTS || difference > MAX_MONEY_CENTS)
-      throw httpError(409, 'La diferencia estÃ¡ fuera del rango permitido');
+      throw httpError(409, 'La diferencia está fuera del rango permitido');
     const closingData = {
       counted: data.countedAmount.fixed,
       expected: formatCents(expected),

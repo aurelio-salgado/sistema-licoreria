@@ -19,7 +19,7 @@ function date(value, name) {
     x.getUTCMonth() !== m - 1 ||
     x.getUTCDate() !== d
   )
-    throw validationError(`${name} no es una fecha vÃ¡lida`);
+    throw validationError(`${name} no es una fecha válida`);
   return value;
 }
 function boundedText(value, name, max) {
@@ -32,14 +32,14 @@ function boundedText(value, name, max) {
 }
 function quantity(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0)
-    throw validationError('cantidad debe ser un nÃºmero mayor que cero');
+    throw validationError('cantidad debe ser un número mayor que cero');
   const scaled = value * 1000,
     rounded = Math.round(scaled),
     t = Number.EPSILON * Math.max(1, Math.abs(scaled)) * 4;
   if (Math.abs(scaled - rounded) > t)
-    throw validationError('cantidad admite como mÃ¡ximo 3 decimales');
+    throw validationError('cantidad admite como máximo 3 decimales');
   if (value > 999999999.999)
-    throw validationError('cantidad estÃ¡ fuera del rango permitido');
+    throw validationError('cantidad está fuera del rango permitido');
   return { fixed: (rounded / 1000).toFixed(3), units: BigInt(rounded) };
 }
 function validateStockQuery(q) {

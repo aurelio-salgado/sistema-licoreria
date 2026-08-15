@@ -13,13 +13,13 @@ function positiveInteger(value, fieldName) {
     throw validationError(`${fieldName} debe ser un entero positivo`);
   const parsed = Number(normalized);
   if (!Number.isSafeInteger(parsed))
-    throw validationError(`${fieldName} debe ser un entero positivo vÃ¡lido`);
+    throw validationError(`${fieldName} debe ser un entero positivo válido`);
   return parsed;
 }
 
 function money(value, fieldName, strictlyPositive = false) {
   if (typeof value !== 'number' || !Number.isFinite(value))
-    throw validationError(`${fieldName} debe ser un nÃºmero vÃ¡lido`);
+    throw validationError(`${fieldName} debe ser un número válido`);
   if (strictlyPositive ? value <= 0 : value < 0)
     throw validationError(
       `${fieldName} debe ser ${strictlyPositive ? 'mayor que cero' : 'mayor o igual que cero'}`,
@@ -28,9 +28,9 @@ function money(value, fieldName, strictlyPositive = false) {
   const rounded = Math.round(scaled);
   const tolerance = Number.EPSILON * Math.max(1, Math.abs(scaled)) * 4;
   if (Math.abs(scaled - rounded) > tolerance)
-    throw validationError(`${fieldName} admite como mÃ¡ximo 2 decimales`);
+    throw validationError(`${fieldName} admite como máximo 2 decimales`);
   if (value > 9999999999.99)
-    throw validationError(`${fieldName} estÃ¡ fuera del rango permitido`);
+    throw validationError(`${fieldName} está fuera del rango permitido`);
   const fixed = (rounded / 100).toFixed(2);
   return { fixed, cents: BigInt(fixed.replace('.', '')) };
 }
@@ -71,7 +71,7 @@ function validDate(value, fieldName) {
     date.getUTCMonth() !== month - 1 ||
     date.getUTCDate() !== day
   )
-    throw validationError(`${fieldName} no es una fecha vÃ¡lida`);
+    throw validationError(`${fieldName} no es una fecha válida`);
   return value;
 }
 
@@ -131,7 +131,7 @@ function validateListQuery(query) {
     query.limit === undefined ? 20 : positiveInteger(query.limit, 'limit');
   if (limit > 100) throw validationError('limit debe estar entre 1 y 100');
   if (!Number.isSafeInteger((page - 1) * limit))
-    throw validationError('page estÃ¡ fuera del rango permitido');
+    throw validationError('page está fuera del rango permitido');
   const status =
     query.status === undefined || query.status === ''
       ? null
