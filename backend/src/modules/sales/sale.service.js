@@ -641,35 +641,52 @@ async function cancelSale(rawId, body, actor) {
       0n,
     );
 
-    let cashbox = null;
-    let cashMovements = [];
-    if (sale.id_caja !== null) {
-      cashbox = await repo.cashboxForUpdate(c, sale.id_caja);
-      if (!cashbox) throw error(409, 'La caja asociada no existe');
-      if (Number(cashbox.id_usuario) !== Number(actor.userId))
-        throw error(403, 'Acceso denegado');
-      if (cashbox.estado !== 'abierta')
-        throw error(409, 'La caja asociada estÃ¡ cerrada');
-      cashMovements = await repo.cashMovementsForUpdate(c, id);
-      if (
-        cashMovements.some(
-          (movement) => movement.tipo_movimiento === 'anulacion',
-        )
-      )
-        throw error(409, 'La venta ya posee un movimiento de anulaciÃ³n');
-      if (cashApplied > 0n) {
-        const originals = cashMovements.filter(
-          (movement) =>
-            movement.tipo_movimiento === 'venta' &&
-            movement.naturaleza === 'entrada' &&
-            Boolean(movement.afecta_efectivo),
+    let compensationCashbox = null;
+    if (cashApplied > 0n) {
+      const cashboxes = await repo.cancellationCashboxesForUpdate(
+        c,
+        sale.id_caja,
+        actor.userId,
+      );
+      const originalCashbox =
+        sale.id_caja === null
+          ? null
+          : cashboxes.find(
+              (cashbox) => Number(cashbox.id_caja) === Number(sale.id_caja),
+            );
+      if (sale.id_caja !== null && !originalCashbox)
+        throw error(409, 'La caja asociada no existe');
+
+      const actorCashboxes = cashboxes.filter(
+        (cashbox) =>
+          Number(cashbox.id_usuario) === Number(actor.userId) &&
+          cashbox.estado === 'abierta',
+      );
+      if (actorCashboxes.length !== 1)
+        throw error(
+          409,
+          actorCashboxes.length
+            ? 'Existe mÃ¡s de una caja abierta para el usuario anulador'
+            : 'El usuario anulador no tiene una caja abierta',
         );
-        if (originals.length !== 1 || cents(originals[0].monto) !== cashApplied)
-          throw error(
-            409,
-            'El movimiento de efectivo original es inconsistente',
-          );
-      }
+      [compensationCashbox] = actorCashboxes;
+    }
+
+    const cashMovements = await repo.cashMovementsForUpdate(c, id);
+    if (
+      cashMovements.some((movement) => movement.tipo_movimiento === 'anulacion')
+    )
+      throw error(409, 'La venta ya posee un movimiento de anulaciÃ³n');
+    if (cashApplied > 0n && sale.id_caja !== null) {
+      const originals = cashMovements.filter(
+        (movement) =>
+          Number(movement.id_caja) === Number(sale.id_caja) &&
+          movement.tipo_movimiento === 'venta' &&
+          movement.naturaleza === 'entrada' &&
+          Boolean(movement.afecta_efectivo),
+      );
+      if (originals.length !== 1 || cents(originals[0].monto) !== cashApplied)
+        throw error(409, 'El movimiento de efectivo original es inconsistente');
     }
 
     for (const restoration of restorations) {
@@ -681,9 +698,9 @@ async function cancelSale(rawId, body, actor) {
         userId: actor.userId,
       });
     }
-    if (cashbox && cashApplied > 0n)
+    if (compensationCashbox)
       await repo.createCancellationCashMovement(c, {
-        cashboxId: cashbox.id_caja,
+        cashboxId: compensationCashbox.id_caja,
         saleId: id,
         userId: actor.userId,
         amount: money(cashApplied),
@@ -697,7 +714,18 @@ async function cancelSale(rawId, body, actor) {
       entity: 'ventas',
       entityId: id,
       previousData: snapshot(sale),
-      newData: snapshot(result),
+      newData: {
+        ...snapshot(result),
+        anulacion: {
+          id_venta: id,
+          id_usuario_vendedor_original: sale.id_usuario,
+          id_usuario_anulador: actor.userId,
+          id_caja_original: sale.id_caja,
+          id_caja_compensatoria: compensationCashbox?.id_caja ?? null,
+          efectivo_aplicado: money(cashApplied),
+          motivo: reason,
+        },
+      },
       ipAddress: actor.ipAddress,
     });
     return result;

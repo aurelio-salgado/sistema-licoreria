@@ -339,12 +339,15 @@ async function cancellationPaymentsForUpdate(c, saleId) {
   );
   return rows;
 }
-async function cashboxForUpdate(c, cashboxId) {
+async function cancellationCashboxesForUpdate(c, originalCashboxId, userId) {
+  const originalCondition = originalCashboxId === null ? '' : 'id_caja=? OR ';
+  const values =
+    originalCashboxId === null ? [userId] : [originalCashboxId, userId];
   const [rows] = await c.execute(
-    'SELECT id_caja,id_usuario,estado FROM cajas WHERE id_caja=? LIMIT 1 FOR UPDATE',
-    [cashboxId],
+    `SELECT id_caja,id_usuario,estado FROM cajas WHERE ${originalCondition}(id_usuario=? AND estado='abierta') ORDER BY id_caja FOR UPDATE`,
+    values,
   );
-  return rows[0] || null;
+  return rows;
 }
 async function cashMovementsForUpdate(c, saleId) {
   const [rows] = await c.execute(
@@ -401,7 +404,7 @@ module.exports = {
   amounts,
   cancel,
   cancellationPaymentsForUpdate,
-  cashboxForUpdate,
+  cancellationCashboxesForUpdate,
   cashMovementsForUpdate,
   count,
   complete,
