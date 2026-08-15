@@ -21,6 +21,23 @@ async function findUserByUsername(connection, username) {
   return users[0] || null;
 }
 
+async function findSessionUserById(executor, userId) {
+  const [users] = await executor.execute(
+    `SELECT
+       id_usuario,
+       nombre_usuario,
+       estado,
+       bloqueado_hasta,
+       bloqueado_hasta > NOW() AS esta_bloqueado
+     FROM usuarios
+     WHERE id_usuario = ?
+     LIMIT 1`,
+    [userId],
+  );
+
+  return users[0] || null;
+}
+
 async function registerFailedAttempt(
   connection,
   userId,
@@ -111,6 +128,7 @@ module.exports = {
   createLoginAudit,
   findPermissionsByUserId,
   findRolesByUserId,
+  findSessionUserById,
   findUserByUsername,
   registerFailedAttempt,
   registerSuccessfulLogin,

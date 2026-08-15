@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 
 const env = require('../config/env');
+const pool = require('../config/database');
+const authRepository = require('../modules/auth/auth.repository');
 
 function rejectUnauthorized(res) {
   return res.status(401).json({
@@ -9,7 +11,7 @@ function rejectUnauthorized(res) {
   });
 }
 
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const authorization = req.get('authorization');
 
   if (!authorization) {
@@ -49,14 +51,23 @@ function authenticate(req, res, next) {
       return rejectUnauthorized(res);
     }
 
+    const user = await authRepository.findSessionUserById(pool, userId);
+
+    if (!user || user.estado !== 'activo' || Boolean(user.esta_bloqueado)) {
+      return rejectUnauthorized(res);
+    }
+
+    const currentRoles = await authRepository.findRolesByUserId(pool, userId);
+
     req.user = {
       id_usuario: userId,
-      nombre_usuario: username,
-      roles: [...roles],
+      nombre_usuario: user.nombre_usuario,
+      roles: currentRoles,
     };
 
     return next();
-  } catch {
+  } catch (error) {
+    if (!(error instanceof jwt.JsonWebTokenError)) return next(error);
     return rejectUnauthorized(res);
   }
 }
