@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ForbiddenPage } from './pages/ForbiddenPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { CatalogPage } from './pages/CatalogPage'
 import { PermissionRoute } from './routes/PermissionRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { PublicOnlyRoute } from './routes/PublicOnlyRoute'
@@ -34,6 +35,9 @@ export default function App() {
                 }
               />
               <Route path="forbidden" element={<ForbiddenPage />} />
+              <Route path="categories" element={<PermissionRoute permission="productos.ver"><CatalogPage type="categories" /></PermissionRoute>} />
+              <Route path="brands" element={<PermissionRoute permission="productos.ver"><CatalogPage type="brands" /></PermissionRoute>} />
+              <Route path="units" element={<PermissionRoute permission="productos.ver"><CatalogPage type="units" /></PermissionRoute>} />
             </Route>
           </Route>
 

@@ -42,7 +42,26 @@ export function AppLayout() {
         <nav className="sidebar-nav" aria-label="Navegación principal">
           <p className="nav-caption">MENÚ PRINCIPAL</p>
           {visibleItems.map((item) =>
-            item.available ? (
+            item.children ? (
+              <div className="nav-group" key={item.label}>
+                <div className="nav-item nav-item--group">
+                  <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
+                <div className="nav-submenu">
+                  {item.children.map((child) => (
+                    <NavLink
+                      key={child.path}
+                      className={({ isActive }) => `nav-subitem${isActive ? ' nav-subitem--active' : ''}`}
+                      to={child.path}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {child.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ) : item.available ? (
               <NavLink
                 key={item.label}
                 className={({ isActive }) => `nav-item${isActive ? ' nav-item--active' : ''}`}

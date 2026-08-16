@@ -1,6 +1,13 @@
 export const navigationItems = [
   { label: 'Dashboard', path: '/', permission: 'dashboard.ver', icon: 'DB', available: true },
-  { label: 'Productos', permission: 'productos.ver', icon: 'PR' },
+  {
+    label: 'Productos', permission: 'productos.ver', icon: 'PR',
+    children: [
+      { label: 'Categorías', path: '/categories' },
+      { label: 'Marcas', path: '/brands' },
+      { label: 'Unidades', path: '/units' },
+    ],
+  },
   { label: 'Compras', permission: 'compras.ver', icon: 'CO' },
   { label: 'Ventas', permission: 'ventas.ver', icon: 'VE' },
   { label: 'Inventario', permission: 'inventario.ver', icon: 'IN' },
