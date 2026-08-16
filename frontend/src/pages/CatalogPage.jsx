@@ -10,6 +10,8 @@ const catalogConfigs = {
   categories: {
     endpoint: '/categories', collection: 'categories', idField: 'id_categoria', singular: 'categoría', plural: 'Categorías',
     description: 'Organiza los productos por familias para facilitar su consulta.',
+    searchPlaceholder: 'Buscar por nombre',
+    searchMaxLength: 100,
     fields: [
       { name: 'nombre', label: 'Nombre', required: true, maxLength: 100 },
       { name: 'descripcion', label: 'Descripción', maxLength: 255, multiline: true },
@@ -18,6 +20,8 @@ const catalogConfigs = {
   brands: {
     endpoint: '/brands', collection: 'brands', idField: 'id_marca', singular: 'marca', plural: 'Marcas',
     description: 'Administra las marcas disponibles en el catálogo comercial.',
+    searchPlaceholder: 'Buscar por nombre',
+    searchMaxLength: 100,
     fields: [
       { name: 'nombre', label: 'Nombre', required: true, maxLength: 100 },
       { name: 'descripcion', label: 'Descripción', maxLength: 255, multiline: true },
@@ -26,6 +30,8 @@ const catalogConfigs = {
   units: {
     endpoint: '/units', collection: 'units', idField: 'id_unidad', singular: 'unidad', plural: 'Unidades de medida',
     description: 'Define cómo se expresan y fraccionan las existencias de productos.',
+    searchPlaceholder: 'Buscar por nombre o abreviatura',
+    searchMaxLength: 80,
     fields: [
       { name: 'nombre', label: 'Nombre', required: true, maxLength: 80 },
       { name: 'abreviatura', label: 'Abreviatura', required: true, maxLength: 20 },
@@ -151,7 +157,7 @@ export function CatalogPage({ type }) {
       {feedback && <div className="inline-alert inline-alert--success" role="status">{feedback}</div>}
       <section className="catalog-panel" aria-label={`Listado de ${config.plural.toLowerCase()}`}>
         <form className="catalog-filters" onSubmit={(event) => { event.preventDefault(); setFilters((current) => ({ ...current, page: 1, search: searchInput.trim() })) }}>
-          <label className="search-field"><span className="sr-only">Buscar</span><input className="form-control" type="search" maxLength={80} placeholder={`Buscar ${config.plural.toLowerCase()}…`} value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /></label>
+          <label className="search-field"><span className="sr-only">Buscar</span><input className="form-control" type="search" maxLength={config.searchMaxLength} placeholder={config.searchPlaceholder} value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /></label>
           <button className="button button--secondary" type="submit">Buscar</button>
           <label className="status-filter"><span>Estado</span><select className="form-control" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, page: 1, status: event.target.value }))}><option value="">Todos</option><option value="activo">Activos</option><option value="inactivo">Inactivos</option></select></label>
         </form>

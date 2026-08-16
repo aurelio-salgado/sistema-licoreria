@@ -228,6 +228,7 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
 
 .modal-backdrop { padding: 20px; position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(16,17,15,.62); }
 .modal { width: min(100%, 540px); max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: 0 24px 70px rgba(17,17,14,.24); }
+.modal--wide { width: min(100%, 820px); }
 .modal-header { padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--color-border); }
 .modal-header h2 { margin: 0; font-size: 21px; }
 .modal-close { width: 36px; height: 36px; border-radius: 8px; font-size: 25px; }
@@ -238,6 +239,24 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
 .catalog-form-actions { margin: 4px -22px -22px; }
 .confirm-message { margin: 0; color: var(--color-text-muted); line-height: 1.6; }
 .floating-error { max-width: 540px; padding: 10px 14px; position: fixed; z-index: 70; right: 24px; bottom: 24px; border: 1px solid #ecc8cc; border-radius: 8px; color: var(--color-danger); background: var(--color-danger-soft); box-shadow: var(--shadow); }
+.link-button { padding: 0; border: 0; color: currentColor; background: transparent; text-decoration: underline; font-weight: 800; cursor: pointer; }
+
+.product-filters { margin-bottom: 20px; display: grid; grid-template-columns: minmax(220px, 1.6fr) auto repeat(3, minmax(145px, 1fr)); align-items: end; gap: 10px; }
+.product-filters label { display: grid; gap: 7px; color: var(--color-text-muted); font-size: 12px; font-weight: 700; }
+.products-table { min-width: 1240px; }
+.products-table td { vertical-align: middle; }
+.products-table td:nth-child(6), .products-table td:nth-child(7), .products-table td:nth-child(8) { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.products-table th:nth-child(6), .products-table th:nth-child(7), .products-table th:nth-child(8) { text-align: right; }
+.table-secondary { margin-top: 3px; display: block; color: var(--color-text-muted); font-size: 11px; font-weight: 400; }
+.product-form { display: grid; gap: 20px; }
+.product-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.product-form-span-2 { grid-column: 1 / -1; }
+.product-form-actions { margin: 4px -22px -22px; }
+.readonly-summary { padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 16px; border: 1px solid #ead9b9; border-radius: var(--radius-sm); background: var(--color-primary-soft); }
+.readonly-summary span { color: #72501d; font-size: 12px; font-weight: 700; }
+.readonly-summary strong { grid-row: span 2; font-family: 'Manrope', sans-serif; font-size: 20px; }
+.readonly-summary small { color: var(--color-text-muted); }
+.form-control[readonly] { color: var(--color-text-muted); background: #f1f0ec; cursor: not-allowed; }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; }
 .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -273,6 +292,8 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
   .workspace { width: 100%; margin-left: 0; }
   .topbar { padding: 0 22px; }
   .menu-button { margin-right: 16px; }
+  .product-filters { grid-template-columns: minmax(220px, 1fr) auto repeat(2, minmax(145px, 1fr)); }
+  .filter-field--status { grid-column: -2 / -1; }
 }
 
 @media (max-width: 650px) {
@@ -301,6 +322,12 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
   .modal-backdrop { padding: 10px; }
   .modal { max-height: calc(100vh - 20px); }
   .table-actions { justify-content: flex-start; }
+  .product-filters { grid-template-columns: 1fr auto; }
+  .product-filters .filter-field { grid-column: 1 / -1; }
+  .product-form-grid { grid-template-columns: 1fr; }
+  .product-form-span-2 { grid-column: auto; }
+  .readonly-summary { grid-template-columns: 1fr; }
+  .readonly-summary strong { grid-row: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

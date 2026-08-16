@@ -12,9 +12,9 @@ function buildListFilters({ search, status }) {
   const values = [];
 
   if (search) {
-    conditions.push('(nombre LIKE ? OR descripcion LIKE ?)');
+    conditions.push('nombre LIKE ?');
     const searchPattern = `%${search}%`;
-    values.push(searchPattern, searchPattern);
+    values.push(searchPattern);
   }
 
   if (status) {

@@ -44,7 +44,7 @@ export function Pagination({ pagination, onPageChange, disabled }) {
   )
 }
 
-export function Modal({ title, children, onClose, footer, busy = false }) {
+export function Modal({ title, children, onClose, footer, busy = false, wide = false }) {
   const titleId = useId()
   const closeButtonRef = useRef(null)
 
@@ -59,7 +59,7 @@ export function Modal({ title, children, onClose, footer, busy = false }) {
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <section className={`modal${wide ? ' modal--wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="modal-header">
           <h2 id={titleId}>{title}</h2>
           <button ref={closeButtonRef} className="icon-button modal-close" type="button" aria-label="Cerrar diálogo" disabled={busy} onClick={onClose}>×</button>

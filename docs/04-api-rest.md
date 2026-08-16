@@ -180,7 +180,8 @@ El array es obligatorio, sin duplicados, y cada id debe existir; `[]` elimina to
 | PUT | `/categories/:id` | `productos.editar` | Reemplaza nombre y descripción. |
 | PATCH | `/categories/:id/status` | `productos.desactivar` | Cambia estado. |
 
-Listado: `page`, `limit`, `search`, `status=activo|inactivo`. Body de creación/edición:
+Listado: `page`, `limit`, `search`, `status=activo|inactivo`. `search` busca
+coincidencias únicamente en `nombre`. Body de creación/edición:
 
 ```json
 { "nombre": "Whisky", "descripcion": "Bebidas de whisky" }
@@ -198,7 +199,8 @@ Listado: `page`, `limit`, `search`, `status=activo|inactivo`. Body de creación/
 | PUT | `/brands/:id` | `productos.editar` | Reemplaza nombre y descripción. |
 | PATCH | `/brands/:id/status` | `productos.desactivar` | Cambia estado. |
 
-Filtros y paginación coinciden con categorías. Body:
+Filtros y paginación coinciden con categorías. En marcas, `search` también busca
+coincidencias únicamente en `nombre`. Body:
 
 ```json
 { "nombre": "Marca ejemplo", "descripcion": null }
@@ -216,7 +218,8 @@ Nombre obligatorio y único, máximo 100; descripción opcional, máximo 255; es
 | PUT | `/units/:id` | `productos.editar` | Reemplaza sus datos. |
 | PATCH | `/units/:id/status` | `productos.desactivar` | Cambia estado. |
 
-Filtros: `page`, `limit`, `search` (máximo 80) y `status`. Body:
+Filtros: `page`, `limit`, `search` (máximo 80) y `status`. `search` busca
+coincidencias en `nombre` o `abreviatura`. Body:
 
 ```json
 { "nombre": "Botella", "abreviatura": "bot", "permite_decimales": false }

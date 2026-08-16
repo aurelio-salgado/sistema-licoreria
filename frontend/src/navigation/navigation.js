@@ -3,6 +3,7 @@ export const navigationItems = [
   {
     label: 'Productos', permission: 'productos.ver', icon: 'PR',
     children: [
+      { label: 'Productos', path: '/products' },
       { label: 'Categorías', path: '/categories' },
       { label: 'Marcas', path: '/brands' },
       { label: 'Unidades', path: '/units' },
