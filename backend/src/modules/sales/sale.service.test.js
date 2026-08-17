@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const pool = require('../../config/database');
@@ -7,6 +9,136 @@ const service = require('./sale.service');
 
 const originalGetConnection = pool.getConnection;
 const originalRepo = { ...repo };
+
+test('contratos de lectura de métodos y pagos de ventas', async (t) => {
+  await t.test('métodos activos usan filtro, orden y no asumen IDs', async () => {
+    const calls = [];
+    const database = {
+      execute: async (sql, values) => {
+        calls.push({ sql, values });
+        return [[
+          {
+            id_metodo_pago: 17,
+            nombre: 'Método configurable',
+            requiere_referencia: 1,
+            es_efectivo: 0,
+            estado: 'activo',
+          },
+        ]];
+      },
+    };
+    const methods = await repo.listActivePaymentMethods(database);
+    assert.deepEqual(calls[0].values, ['activo']);
+    assert.match(calls[0].sql, /WHERE estado=\? ORDER BY id_metodo_pago/);
+    assert.doesNotMatch(calls[0].sql, /SELECT \*/i);
+    assert.deepEqual(methods, [
+      {
+        id_metodo_pago: 17,
+        nombre: 'Método configurable',
+        requiere_referencia: true,
+        es_efectivo: false,
+        estado: 'activo',
+      },
+    ]);
+  });
+
+  await t.test('ruta está antes de :id y exige ventas.crear', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, 'sale.routes.js'),
+      'utf8',
+    );
+    const paymentRoute = source.indexOf("'/payment-methods'");
+    assert.ok(paymentRoute > -1);
+    assert.ok(paymentRoute < source.indexOf("'/:id'"));
+    assert.match(
+      source.slice(paymentRoute, source.indexOf("router.get('/:id'")),
+      /requirePermission\('ventas\.crear'\)/,
+    );
+  });
+
+  await t.test('preparación sin pagos devuelve arreglo vacío', async () => {
+    repo.findById = async () => ({ id_venta: 31, estado: 'preparacion' });
+    repo.listItems = async () => [];
+    repo.listPayments = async () => [];
+    const sale = await service.getSale('31');
+    assert.deepEqual(sale.payments, []);
+  });
+
+  await t.test('detalle conserva pagos históricos y metadatos del método', async () => {
+    repo.listPayments = originalRepo.listPayments;
+    const storedRows = [
+      {
+        id_pago: 81,
+        id_metodo_pago: 9,
+        metodo_nombre: 'Efectivo local',
+        requiere_referencia: 0,
+        es_efectivo: 1,
+        monto: '60.00',
+        referencia: null,
+        monto_recibido: '80.00',
+        cambio: '20.00',
+        creado_en: '2026-08-16 10:00:00',
+      },
+      {
+        id_pago: 82,
+        id_metodo_pago: 14,
+        metodo_nombre: 'Transferencia local',
+        requiere_referencia: 1,
+        es_efectivo: 0,
+        monto: '40.00',
+        referencia: 'REF-204',
+        monto_recibido: null,
+        cambio: '0.00',
+        creado_en: '2026-08-16 10:00:00',
+      },
+    ];
+    const before = structuredClone(storedRows);
+    const payments = await repo.listPayments(
+      { execute: async () => [storedRows] },
+      44,
+    );
+    assert.deepEqual(storedRows, before);
+    assert.deepEqual(payments[0], {
+      id_pago: 81,
+      method: {
+        id_metodo_pago: 9,
+        nombre: 'Efectivo local',
+        requiere_referencia: false,
+        es_efectivo: true,
+      },
+      monto: '60.00',
+      referencia: null,
+      monto_recibido: '80.00',
+      cambio: '20.00',
+      creado_en: '2026-08-16 10:00:00',
+    });
+    assert.equal(payments[1].referencia, 'REF-204');
+    assert.equal(payments[1].method.requiere_referencia, true);
+
+    repo.findById = async () => ({ id_venta: 44, estado: 'completada' });
+    repo.listItems = async () => [];
+    repo.listPayments = async () => payments;
+    const sale = await service.getSale('44');
+    assert.deepEqual(sale.payments, payments);
+  });
+
+  await t.test('venta inexistente conserva respuesta 404', async () => {
+    repo.findById = async () => null;
+    let queriedChildren = false;
+    repo.listItems = async () => {
+      queriedChildren = true;
+      return [];
+    };
+    repo.listPayments = repo.listItems;
+    await assert.rejects(
+      service.getSale('404'),
+      (error) => error.statusCode === 404 && error.message === 'Venta no encontrada',
+    );
+    assert.equal(queriedChildren, false);
+  });
+
+  Object.assign(repo, originalRepo);
+});
 
 function scenario(options = {}) {
   const calls = {
@@ -127,6 +259,7 @@ function scenario(options = {}) {
       caja: sale.id_caja === null ? null : { id_caja: sale.id_caja },
     }),
     listItems: async () => [],
+    listPayments: async () => [],
     audit: async (_c, data) => calls.audits.push(data),
   });
   return { calls, connection, payments, sale, transaction };

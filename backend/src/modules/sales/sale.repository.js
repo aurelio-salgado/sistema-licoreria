@@ -159,6 +159,37 @@ async function listItems(e, id) {
     creado_en: r.creado_en,
   }));
 }
+async function listPayments(e, id) {
+  const [rows] = await e.execute(
+    `SELECT pv.id_pago,mp.id_metodo_pago,mp.nombre AS metodo_nombre,mp.requiere_referencia,mp.es_efectivo,pv.monto,pv.referencia,pv.monto_recibido,pv.cambio,pv.creado_en FROM pagos_venta pv INNER JOIN metodos_pago mp ON mp.id_metodo_pago=pv.id_metodo_pago WHERE pv.id_venta=? ORDER BY pv.id_pago`,
+    [id],
+  );
+  return rows.map((row) => ({
+    id_pago: row.id_pago,
+    method: {
+      id_metodo_pago: row.id_metodo_pago,
+      nombre: row.metodo_nombre,
+      requiere_referencia: Boolean(row.requiere_referencia),
+      es_efectivo: Boolean(row.es_efectivo),
+    },
+    monto: row.monto,
+    referencia: row.referencia,
+    monto_recibido: row.monto_recibido,
+    cambio: row.cambio,
+    creado_en: row.creado_en,
+  }));
+}
+async function listActivePaymentMethods(e) {
+  const [rows] = await e.execute(
+    'SELECT id_metodo_pago,nombre,requiere_referencia,es_efectivo,estado FROM metodos_pago WHERE estado=? ORDER BY id_metodo_pago',
+    ['activo'],
+  );
+  return rows.map((row) => ({
+    ...row,
+    requiere_referencia: Boolean(row.requiere_referencia),
+    es_efectivo: Boolean(row.es_efectivo),
+  }));
+}
 async function findProductForUpdate(c, id) {
   const [rows] = await c.execute(
     `SELECT p.id_producto,p.estado,p.precio_venta,p.costo_promedio,um.permite_decimales FROM productos p INNER JOIN unidades_medida um ON um.id_unidad=p.id_unidad WHERE p.id_producto=? LIMIT 1 FOR UPDATE`,
@@ -427,7 +458,9 @@ module.exports = {
   findItemForUpdate,
   findProductForUpdate,
   list,
+  listActivePaymentMethods,
   listItems,
+  listPayments,
   openCashboxesForUpdate,
   paymentMethodsForUpdate,
   productsForUpdate,

@@ -5,6 +5,11 @@ const express = require('express'),
 const router = express.Router();
 router.use(authenticate);
 router.get('/', requirePermission('ventas.ver'), controller.listSales);
+router.get(
+  '/payment-methods',
+  requirePermission('ventas.crear'),
+  controller.listPaymentMethods,
+);
 router.get('/:id', requirePermission('ventas.ver'), controller.getSale);
 router.post('/', requirePermission('ventas.crear'), controller.createSale);
 router.post(

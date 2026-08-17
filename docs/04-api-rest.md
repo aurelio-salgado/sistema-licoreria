@@ -380,6 +380,7 @@ Solo aplica a `recibida`. Exige existencia suficiente para restar todas las cant
 | Método | Endpoint | Permiso | Descripción |
 | --- | --- | --- | --- |
 | GET | `/sales` | `ventas.ver` | Lista ventas. |
+| GET | `/sales/payment-methods` | `ventas.crear` | Lista métodos de pago activos disponibles para confirmar. |
 | GET | `/sales/:id` | `ventas.ver` | Devuelve encabezado, líneas y pagos. |
 | POST | `/sales` | `ventas.crear` | Crea una venta en preparación. |
 | PUT | `/sales/:id` | `ventas.crear` | Reemplaza encabezado en preparación. |
@@ -390,6 +391,17 @@ Solo aplica a `recibida`. Exige existencia suficiente para restar todas las cant
 | POST | `/sales/:id/cancel` | `ventas.anular` | Anula administrativamente una venta completada. |
 
 Estados: `preparacion`, `completada`, `anulada`. Filtros: `page`, `limit`, `status`, `client`, `seller`, `date_from`, `date_to`; respuesta `{ sales, pagination }`.
+
+`GET /sales/payment-methods` responde `{ payment_methods }`, ordenados por
+`id_metodo_pago`, con `id_metodo_pago`, `nombre`, `requiere_referencia`,
+`es_efectivo` y `estado`. Solo devuelve registros activos y sirve para construir
+la confirmación; el backend vuelve a validar cada método dentro de la transacción.
+
+`GET /sales/:id` siempre incluye `items` y `payments`. Una preparación o venta sin
+pagos devuelve `payments: []`. Cada pago conserva `id_pago`, `monto`, `referencia`,
+`monto_recibido`, `cambio`, `creado_en` y un objeto `method` con
+`id_metodo_pago`, `nombre`, `requiere_referencia` y `es_efectivo`. La consulta es
+exclusivamente informativa y no modifica ni recalcula pagos históricos.
 
 Encabezado:
 

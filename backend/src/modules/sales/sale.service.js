@@ -180,7 +180,10 @@ async function recalculate(c, id) {
 async function hydrate(e, id) {
   const sale = await repo.findById(e, id);
   if (!sale) throw notFound();
-  sale.items = await repo.listItems(e, id);
+  [sale.items, sale.payments] = await Promise.all([
+    repo.listItems(e, id),
+    repo.listPayments(e, id),
+  ]);
   return sale;
 }
 function snapshot(s) {
@@ -234,6 +237,9 @@ async function listSales(q) {
 }
 async function getSale(id) {
   return hydrate(pool, validateId(id));
+}
+async function listPaymentMethods() {
+  return repo.listActivePaymentMethods(pool);
 }
 async function createSale(body, actor) {
   const d = validateSaleInput(body);
@@ -737,6 +743,7 @@ module.exports = {
   confirmSale,
   createSale,
   getSale,
+  listPaymentMethods,
   listSales,
   removeItem,
   updateItem,

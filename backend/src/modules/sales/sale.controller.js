@@ -19,6 +19,16 @@ async function getSale(req, res, next) {
     next(e);
   }
 }
+async function listPaymentMethods(req, res, next) {
+  try {
+    res.status(200).json({
+      success: true,
+      data: { payment_methods: await service.listPaymentMethods() },
+    });
+  } catch (e) {
+    next(e);
+  }
+}
 async function createSale(req, res, next) {
   try {
     res.status(201).json({
@@ -116,6 +126,7 @@ module.exports = {
   confirmSale,
   createSale,
   getSale,
+  listPaymentMethods,
   listSales,
   removeItem,
   updateItem,
