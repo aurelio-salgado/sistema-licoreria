@@ -31,3 +31,20 @@ Los formularios normalizan campos opcionales vacíos como `null`.
 
 El cliente marcado mediante `es_consumidor_final` se identifica como cliente
 predeterminado y no presenta acciones de edición ni desactivación.
+
+## Compras
+
+La ruta `/purchases` permite consultar y filtrar compras, crear borradores y acceder
+a `/purchases/:id`. El detalle administra encabezado y líneas mientras la compra está
+en `borrador`, muestra totales calculados por el backend y aplica permisos separados
+para crear/editar, confirmar y anular.
+
+La confirmación advierte que actualizará inventario y costo promedio. La anulación
+exige motivo, revierte existencias y deja la compra histórica en modo consulta.
+
+## Manejo de errores del frontend
+
+Las validaciones locales se muestran junto al campo correspondiente. Los errores de
+acciones enviados por la API se presentan en un diálogo accesible y contextual; los
+errores al cargar una pantalla conservan su estado con opción de reintento. Una
+respuesta `401` mantiene el flujo global de sesión expirada.

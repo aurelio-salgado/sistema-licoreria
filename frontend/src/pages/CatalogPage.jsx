@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { catalogsApi } from '../api/catalogs'
 import { useAuth } from '../auth/useAuth'
 import { ErrorState, LoadingState } from '../components/FeedbackStates'
-import { ConfirmDialog, EmptyState, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
+import { ConfirmDialog, EmptyState, ErrorDialog, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
+import { createActionError } from '../utils/actionErrors'
 
 const PAGE_LIMIT = 10
 
@@ -58,7 +59,7 @@ function validate(config, values) {
   return errors
 }
 
-function CatalogForm({ config, record, busy, apiError, onCancel, onSubmit }) {
+function CatalogForm({ config, record, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState(() => initialValues(config, record))
   const [errors, setErrors] = useState({})
   const setValue = (name, value) => setValues((current) => ({ ...current, [name]: value }))
@@ -86,7 +87,6 @@ function CatalogForm({ config, record, busy, apiError, onCancel, onSubmit }) {
           )}
         </FormField>
       ))}
-      {apiError && <div className="inline-alert inline-alert--error" role="alert">{apiError}</div>}
       <div className="modal-footer catalog-form-actions">
         <button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button>
         <button className="button button--primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
@@ -108,7 +108,7 @@ export function CatalogPage({ type }) {
   const [editing, setEditing] = useState(null)
   const [statusRecord, setStatusRecord] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [mutationError, setMutationError] = useState('')
+  const [mutationError, setMutationError] = useState(null)
 
   const canCreate = hasPermission('productos.crear')
   const canEdit = hasPermission('productos.editar')
@@ -128,25 +128,29 @@ export function CatalogPage({ type }) {
   useEffect(() => { if (!feedback) return undefined; const timer = window.setTimeout(() => setFeedback(''), 4500); return () => window.clearTimeout(timer) }, [feedback])
 
   const columns = useMemo(() => config.fields.map((field) => field.name), [config])
-  const closeEditor = () => { setEditing(null); setMutationError('') }
+  const closeEditor = () => { setEditing(null); setMutationError(null) }
   const saveRecord = async (payload) => {
-    setSaving(true); setMutationError('')
+    setSaving(true); setMutationError(null)
     try {
       if (editing?.record) await catalogsApi.update(config.endpoint, editing.record[config.idField], payload)
       else await catalogsApi.create(config.endpoint, payload)
       setFeedback(`${config.singular.charAt(0).toUpperCase() + config.singular.slice(1)} ${editing?.record ? 'actualizada' : 'creada'} correctamente.`)
       closeEditor(); await loadRecords()
-    } catch (requestError) { setMutationError(requestError.message || 'No fue posible guardar los cambios.') }
+    } catch (requestError) {
+      setMutationError(createActionError(requestError, editing?.record ? 'No se pudieron guardar los cambios' : `No se pudo crear la ${config.singular}`, 'No fue posible guardar los cambios.'))
+    }
     finally { setSaving(false) }
   }
   const changeStatus = async () => {
     const nextStatus = statusRecord.estado === 'activo' ? 'inactivo' : 'activo'
-    setSaving(true); setMutationError('')
+    setSaving(true); setMutationError(null)
     try {
       await catalogsApi.updateStatus(config.endpoint, statusRecord[config.idField], nextStatus)
       setFeedback(`${config.singular.charAt(0).toUpperCase() + config.singular.slice(1)} ${nextStatus === 'activo' ? 'reactivada' : 'desactivada'} correctamente.`)
       setStatusRecord(null); await loadRecords()
-    } catch (requestError) { setMutationError(requestError.message || 'No fue posible cambiar el estado.') }
+    } catch (requestError) {
+      setMutationError(createActionError(requestError, `No se pudo ${actionLabel.toLowerCase()} la ${config.singular}`, 'No fue posible cambiar el estado.'))
+    }
     finally { setSaving(false) }
   }
 
@@ -166,9 +170,9 @@ export function CatalogPage({ type }) {
         )}
         {!error && <Pagination pagination={pagination} disabled={loading} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} />}
       </section>
-      {editing && <Modal title={`${editing.record ? 'Editar' : 'Nueva'} ${config.singular}`} onClose={closeEditor} busy={saving}><CatalogForm config={config} record={editing.record} busy={saving} apiError={mutationError} onCancel={closeEditor} onSubmit={saveRecord} /></Modal>}
-      {statusRecord && <ConfirmDialog title={`${actionLabel} ${config.singular}`} message={`¿Confirmas que deseas ${actionLabel.toLowerCase()} “${statusRecord.nombre}”?`} confirmLabel={actionLabel} tone={statusRecord.estado === 'activo' ? 'danger' : 'success'} busy={saving} onCancel={() => { setStatusRecord(null); setMutationError('') }} onConfirm={changeStatus} />}
-      {statusRecord && mutationError && <div className="floating-error" role="alert">{mutationError}</div>}
+      {editing && <Modal title={`${editing.record ? 'Editar' : 'Nueva'} ${config.singular}`} onClose={closeEditor} busy={saving}><CatalogForm config={config} record={editing.record} busy={saving} onCancel={closeEditor} onSubmit={saveRecord} /></Modal>}
+      {statusRecord && <ConfirmDialog title={`${actionLabel} ${config.singular}`} message={`¿Confirmas que deseas ${actionLabel.toLowerCase()} “${statusRecord.nombre}”?`} confirmLabel={actionLabel} tone={statusRecord.estado === 'activo' ? 'danger' : 'success'} busy={saving} onCancel={() => { setStatusRecord(null); setMutationError(null) }} onConfirm={changeStatus} />}
+      <ErrorDialog open={Boolean(mutationError)} title={mutationError?.title} message={mutationError?.message} onClose={() => setMutationError(null)} />
     </div>
   )
 }

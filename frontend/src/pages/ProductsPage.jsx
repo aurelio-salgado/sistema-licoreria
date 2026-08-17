@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { catalogsApi } from '../api/catalogs'
 import { productsApi } from '../api/products'
 import { useAuth } from '../auth/useAuth'
-import { ConfirmDialog, EmptyState, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
+import { ConfirmDialog, EmptyState, ErrorDialog, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
 import { ErrorState, LoadingState } from '../components/FeedbackStates'
 import { formatMoney, formatQuantity } from '../utils/formatters'
+import { createActionError } from '../utils/actionErrors'
 
 const PAGE_LIMIT = 10
 const emptyFilters = {
@@ -125,7 +126,7 @@ function buildPayload(values, { omitAverageCost }) {
   return payload
 }
 
-function ProductForm({ product, catalogs, busy, apiError, onCancel, onSubmit }) {
+function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState(() => createInitialValues(product))
   const [errors, setErrors] = useState({})
   const hasStock = Number(product?.existencia ?? 0) > 0
@@ -187,7 +188,6 @@ function ProductForm({ product, catalogs, busy, apiError, onCancel, onSubmit }) 
           <input id="porcentaje_impuesto" className="form-control" type="number" min="0" step="0.01" value={values.porcentaje_impuesto} disabled={busy} onChange={(event) => setValue('porcentaje_impuesto', event.target.value)} />
         </FormField>
       </div>
-      {apiError && <div className="inline-alert inline-alert--error" role="alert">{apiError}</div>}
       <div className="modal-footer product-form-actions">
         <button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button>
         <button className="button button--primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar producto'}</button>
@@ -211,7 +211,7 @@ export function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState(undefined)
   const [statusProduct, setStatusProduct] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [mutationError, setMutationError] = useState('')
+  const [mutationError, setMutationError] = useState(null)
 
   const canCreate = hasPermission('productos.crear')
   const canEdit = hasPermission('productos.editar')
@@ -238,25 +238,29 @@ export function ProductsPage() {
   useEffect(() => { loadCatalogs() }, [loadCatalogs])
   useEffect(() => { if (!feedback) return undefined; const timer = window.setTimeout(() => setFeedback(''), 4500); return () => window.clearTimeout(timer) }, [feedback])
 
-  const closeEditor = () => { setEditingProduct(undefined); setMutationError('') }
+  const closeEditor = () => { setEditingProduct(undefined); setMutationError(null) }
   const saveProduct = async (payload) => {
-    setSaving(true); setMutationError('')
+    setSaving(true); setMutationError(null)
     try {
       if (editingProduct) await productsApi.update(editingProduct.id_producto, payload)
       else await productsApi.create(payload)
       setFeedback(`Producto ${editingProduct ? 'actualizado' : 'creado'} correctamente.`)
       closeEditor(); await loadProducts()
-    } catch (requestError) { setMutationError(requestError.message || 'No fue posible guardar el producto.') }
+    } catch (requestError) {
+      setMutationError(createActionError(requestError, editingProduct ? 'No se pudieron guardar los cambios' : 'No se pudo crear el producto', 'No fue posible guardar el producto.'))
+    }
     finally { setSaving(false) }
   }
   const changeStatus = async () => {
     const nextStatus = statusProduct.estado === 'activo' ? 'inactivo' : 'activo'
-    setSaving(true); setMutationError('')
+    setSaving(true); setMutationError(null)
     try {
       await productsApi.updateStatus(statusProduct.id_producto, nextStatus)
       setFeedback(`Producto ${nextStatus === 'activo' ? 'reactivado' : 'desactivado'} correctamente.`)
       setStatusProduct(null); await loadProducts()
-    } catch (requestError) { setMutationError(requestError.message || 'No fue posible cambiar el estado.') }
+    } catch (requestError) {
+      setMutationError(createActionError(requestError, `No se pudo ${statusAction.toLowerCase()} el producto`, 'No fue posible cambiar el estado.'))
+    }
     finally { setSaving(false) }
   }
   const catalogOptions = useMemo(() => ({ categories: catalogs.categories, brands: catalogs.brands }), [catalogs])
@@ -280,9 +284,9 @@ export function ProductsPage() {
         )}
         {!error && <Pagination pagination={pagination} disabled={loading} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} />}
       </section>
-      {editingProduct !== undefined && <Modal title={editingProduct ? 'Editar producto' : 'Nuevo producto'} onClose={closeEditor} busy={saving} wide><ProductForm key={editingProduct?.id_producto ?? 'new'} product={editingProduct} catalogs={catalogs} busy={saving} apiError={mutationError} onCancel={closeEditor} onSubmit={saveProduct} /></Modal>}
-      {statusProduct && <ConfirmDialog title={`${statusAction} producto`} message={`¿Confirmas que deseas ${statusAction.toLowerCase()} “${statusProduct.nombre}”?`} confirmLabel={statusAction} tone={statusProduct.estado === 'activo' ? 'danger' : 'success'} busy={saving} onCancel={() => { setStatusProduct(null); setMutationError('') }} onConfirm={changeStatus} />}
-      {statusProduct && mutationError && <div className="floating-error" role="alert">{mutationError}</div>}
+      {editingProduct !== undefined && <Modal title={editingProduct ? 'Editar producto' : 'Nuevo producto'} onClose={closeEditor} busy={saving} wide><ProductForm key={editingProduct?.id_producto ?? 'new'} product={editingProduct} catalogs={catalogs} busy={saving} onCancel={closeEditor} onSubmit={saveProduct} /></Modal>}
+      {statusProduct && <ConfirmDialog title={`${statusAction} producto`} message={`¿Confirmas que deseas ${statusAction.toLowerCase()} “${statusProduct.nombre}”?`} confirmLabel={statusAction} tone={statusProduct.estado === 'activo' ? 'danger' : 'success'} busy={saving} onCancel={() => { setStatusProduct(null); setMutationError(null) }} onConfirm={changeStatus} />}
+      <ErrorDialog open={Boolean(mutationError)} title={mutationError?.title} message={mutationError?.message} onClose={() => setMutationError(null)} />
     </div>
   )
 }

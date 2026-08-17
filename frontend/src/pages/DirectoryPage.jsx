@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { clientsApi } from '../api/clients'
 import { suppliersApi } from '../api/suppliers'
 import { useAuth } from '../auth/useAuth'
-import { ConfirmDialog, EmptyState, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
+import { ConfirmDialog, EmptyState, ErrorDialog, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
 import { ErrorState, LoadingState } from '../components/FeedbackStates'
+import { createActionError } from '../utils/actionErrors'
 
 const PAGE_LIMIT = 10
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -91,7 +92,7 @@ function validate(config, values) {
   return errors
 }
 
-function DirectoryForm({ config, record, busy, apiError, onCancel, onSubmit }) {
+function DirectoryForm({ config, record, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState(() => initialValues(config, record))
   const [errors, setErrors] = useState({})
   const setValue = (field, value) =>
@@ -131,7 +132,6 @@ function DirectoryForm({ config, record, busy, apiError, onCancel, onSubmit }) {
           </div>
         ))}
       </div>
-      {apiError && <div className="inline-alert inline-alert--error" role="alert">{apiError}</div>}
       <div className="modal-footer directory-form-actions">
         <button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button>
         <button className="button button--primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : `Guardar ${config.singular}`}</button>
@@ -153,7 +153,7 @@ export function DirectoryPage({ type }) {
   const [editing, setEditing] = useState(undefined)
   const [statusRecord, setStatusRecord] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [mutationError, setMutationError] = useState('')
+  const [mutationError, setMutationError] = useState(null)
 
   const canCreate = hasPermission(`${config.permissionPrefix}.crear`)
   const canEdit = hasPermission(`${config.permissionPrefix}.editar`)
@@ -178,10 +178,10 @@ export function DirectoryPage({ type }) {
     return () => window.clearTimeout(timer)
   }, [feedback])
 
-  const closeEditor = () => { setEditing(undefined); setMutationError('') }
+  const closeEditor = () => { setEditing(undefined); setMutationError(null) }
   const saveRecord = async (payload) => {
     setSaving(true)
-    setMutationError('')
+    setMutationError(null)
     try {
       if (editing) await config.api.update(editing[config.idField], payload)
       else await config.api.create(payload)
@@ -189,7 +189,7 @@ export function DirectoryPage({ type }) {
       closeEditor()
       await loadRecords()
     } catch (requestError) {
-      setMutationError(requestError.message || `No fue posible guardar el ${config.singular}.`)
+      setMutationError(createActionError(requestError, editing ? 'No se pudieron guardar los cambios' : `No se pudo crear el ${config.singular}`, `No fue posible guardar el ${config.singular}.`))
     } finally {
       setSaving(false)
     }
@@ -197,14 +197,14 @@ export function DirectoryPage({ type }) {
   const changeStatus = async () => {
     const nextStatus = statusRecord.estado === 'activo' ? 'inactivo' : 'activo'
     setSaving(true)
-    setMutationError('')
+    setMutationError(null)
     try {
       await config.api.updateStatus(statusRecord[config.idField], nextStatus)
       setFeedback(`${config.singular.charAt(0).toUpperCase() + config.singular.slice(1)} ${nextStatus === 'activo' ? config.reactivatedLabel : config.deactivatedLabel} correctamente.`)
       setStatusRecord(null)
       await loadRecords()
     } catch (requestError) {
-      setMutationError(requestError.message || 'No fue posible cambiar el estado.')
+      setMutationError(createActionError(requestError, `No se pudo ${statusAction.toLowerCase()} el ${config.singular}`, 'No fue posible cambiar el estado.'))
     } finally {
       setSaving(false)
     }
@@ -226,9 +226,9 @@ export function DirectoryPage({ type }) {
         )}
         {!error && <Pagination pagination={pagination} disabled={loading} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} />}
       </section>
-      {editing !== undefined && <Modal title={editing ? `Editar ${config.singular}` : `Nuevo ${config.singular}`} onClose={closeEditor} busy={saving} wide><DirectoryForm key={editing?.[config.idField] ?? 'new'} config={config} record={editing} busy={saving} apiError={mutationError} onCancel={closeEditor} onSubmit={saveRecord} /></Modal>}
-      {statusRecord && <ConfirmDialog title={`${statusAction} ${config.singular}`} message={`¿Confirmas que deseas ${statusAction.toLowerCase()} “${statusRecord.nombre}”?`} confirmLabel={statusAction} tone={statusRecord.estado === 'activo' ? 'danger' : 'success'} busy={saving} onCancel={() => { setStatusRecord(null); setMutationError('') }} onConfirm={changeStatus} />}
-      {statusRecord && mutationError && <div className="floating-error" role="alert">{mutationError}</div>}
+      {editing !== undefined && <Modal title={editing ? `Editar ${config.singular}` : `Nuevo ${config.singular}`} onClose={closeEditor} busy={saving} wide><DirectoryForm key={editing?.[config.idField] ?? 'new'} config={config} record={editing} busy={saving} onCancel={closeEditor} onSubmit={saveRecord} /></Modal>}
+      {statusRecord && <ConfirmDialog title={`${statusAction} ${config.singular}`} message={`¿Confirmas que deseas ${statusAction.toLowerCase()} “${statusRecord.nombre}”?`} confirmLabel={statusAction} tone={statusRecord.estado === 'activo' ? 'danger' : 'success'} busy={saving} onCancel={() => { setStatusRecord(null); setMutationError(null) }} onConfirm={changeStatus} />}
+      <ErrorDialog open={Boolean(mutationError)} title={mutationError?.title} message={mutationError?.message} onClose={() => setMutationError(null)} />
     </div>
   )
 }

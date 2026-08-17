@@ -9,7 +9,7 @@ export const navigationItems = [
       { label: 'Unidades', path: '/units' },
     ],
   },
-  { label: 'Compras', permission: 'compras.ver', icon: 'CO' },
+  { label: 'Compras', path: '/purchases', permission: 'compras.ver', icon: 'CO', available: true },
   { label: 'Ventas', permission: 'ventas.ver', icon: 'VE' },
   { label: 'Inventario', permission: 'inventario.ver', icon: 'IN' },
   { label: 'Clientes', path: '/clients', permission: 'clientes.ver', icon: 'CL', available: true },
