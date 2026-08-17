@@ -14,7 +14,7 @@ export function PageHeader({ eyebrow, title, description, action }) {
 }
 
 export function StatusBadge({ status }) {
-  const labels = { activo: 'Activo', inactivo: 'Inactivo', borrador: 'Borrador', recibida: 'Recibida', preparacion: 'Preparación', completada: 'Completada', anulada: 'Anulada' }
+  const labels = { activo: 'Activo', inactivo: 'Inactivo', borrador: 'Borrador', recibida: 'Recibida', preparacion: 'Preparación', completada: 'Completada', anulada: 'Anulada', abierta: 'Abierta', cerrada: 'Cerrada' }
   return <span className={`badge badge--${status}`}>{labels[status] ?? status}</span>
 }
 

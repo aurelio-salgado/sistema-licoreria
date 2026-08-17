@@ -12,6 +12,8 @@ import { PurchaseDetailPage } from './pages/PurchaseDetailPage'
 import { PurchasesPage } from './pages/PurchasesPage'
 import { SaleDetailPage } from './pages/SaleDetailPage'
 import { SalesPage } from './pages/SalesPage'
+import { CashDetailPage } from './pages/CashDetailPage'
+import { CashPage } from './pages/CashPage'
 import { PermissionRoute } from './routes/PermissionRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { PublicOnlyRoute } from './routes/PublicOnlyRoute'
@@ -51,6 +53,8 @@ export default function App() {
               <Route path="purchases/:id" element={<PermissionRoute permission="compras.ver"><PurchaseDetailPage /></PermissionRoute>} />
               <Route path="sales" element={<PermissionRoute permission="ventas.ver"><SalesPage /></PermissionRoute>} />
               <Route path="sales/:id" element={<PermissionRoute permission="ventas.ver"><SaleDetailPage /></PermissionRoute>} />
+              <Route path="cash" element={<PermissionRoute permission="caja.movimientos"><CashPage /></PermissionRoute>} />
+              <Route path="cash/:id" element={<PermissionRoute permission="caja.movimientos"><CashDetailPage /></PermissionRoute>} />
             </Route>
           </Route>
 

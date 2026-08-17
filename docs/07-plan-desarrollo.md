@@ -50,6 +50,13 @@ uno o varios métodos de pago activos y muestra la factura generada por el backe
 Las ventas completadas conservan sus pagos históricos y pueden anularse de forma
 controlada según permisos, inventario y reglas de caja.
 
+## Caja
+
+Las rutas `/cash` y `/cash/:id` permiten administrar la caja propia: apertura,
+ingresos y egresos manuales, movimientos de ventas y anulaciones, cierre e
+historial. El monto esperado mostrado durante el turno es una ayuda calculada con
+movimientos reales; el backend conserva la autoridad sobre el cierre y diferencia.
+
 ## Manejo de errores del frontend
 
 Las validaciones locales se muestran junto al campo correspondiente. Los errores de
