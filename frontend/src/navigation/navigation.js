@@ -10,7 +10,7 @@ export const navigationItems = [
     ],
   },
   { label: 'Compras', path: '/purchases', permission: 'compras.ver', icon: 'CO', available: true },
-  { label: 'Ventas', permission: 'ventas.ver', icon: 'VE' },
+  { label: 'Ventas', path: '/sales', permission: 'ventas.ver', icon: 'VE', available: true },
   { label: 'Inventario', permission: 'inventario.ver', icon: 'IN' },
   { label: 'Clientes', path: '/clients', permission: 'clientes.ver', icon: 'CL', available: true },
   { label: 'Proveedores', path: '/suppliers', permission: 'proveedores.ver', icon: 'PV', available: true },

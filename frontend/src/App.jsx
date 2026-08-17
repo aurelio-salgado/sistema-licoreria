@@ -10,6 +10,8 @@ import { ProductsPage } from './pages/ProductsPage'
 import { DirectoryPage } from './pages/DirectoryPage'
 import { PurchaseDetailPage } from './pages/PurchaseDetailPage'
 import { PurchasesPage } from './pages/PurchasesPage'
+import { SaleDetailPage } from './pages/SaleDetailPage'
+import { SalesPage } from './pages/SalesPage'
 import { PermissionRoute } from './routes/PermissionRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { PublicOnlyRoute } from './routes/PublicOnlyRoute'
@@ -47,6 +49,8 @@ export default function App() {
               <Route path="suppliers" element={<PermissionRoute permission="proveedores.ver"><DirectoryPage type="suppliers" /></PermissionRoute>} />
               <Route path="purchases" element={<PermissionRoute permission="compras.ver"><PurchasesPage /></PermissionRoute>} />
               <Route path="purchases/:id" element={<PermissionRoute permission="compras.ver"><PurchaseDetailPage /></PermissionRoute>} />
+              <Route path="sales" element={<PermissionRoute permission="ventas.ver"><SalesPage /></PermissionRoute>} />
+              <Route path="sales/:id" element={<PermissionRoute permission="ventas.ver"><SaleDetailPage /></PermissionRoute>} />
             </Route>
           </Route>
 

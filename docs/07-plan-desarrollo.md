@@ -42,6 +42,14 @@ para crear/editar, confirmar y anular.
 La confirmación advierte que actualizará inventario y costo promedio. La anulación
 exige motivo, revierte existencias y deja la compra histórica en modo consulta.
 
+## Ventas
+
+Las rutas `/sales` y `/sales/:id` permiten consultar, filtrar y preparar ventas.
+Las preparaciones admiten encabezado y líneas editables; la confirmación registra
+uno o varios métodos de pago activos y muestra la factura generada por el backend.
+Las ventas completadas conservan sus pagos históricos y pueden anularse de forma
+controlada según permisos, inventario y reglas de caja.
+
 ## Manejo de errores del frontend
 
 Las validaciones locales se muestran junto al campo correspondiente. Los errores de
