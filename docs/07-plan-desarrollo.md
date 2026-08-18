@@ -68,6 +68,18 @@ un formulario modal con motivo obligatorio, vista previa y validaciones locales 
 cantidad. El backend conserva la autoridad sobre existencia, producto activo y
 registro transaccional. Los ajustes no modifican el costo promedio.
 
+## Usuarios, roles y permisos
+
+La ruta `/users`, protegida por `usuarios.ver`, ofrece búsqueda, filtros remotos,
+paginación y consulta del estado de acceso. Según permisos permite crear, editar,
+activar o desactivar usuarios y reemplazar su único rol. La contraseña inicial se
+valida y envía únicamente durante la creación; no se persiste en el frontend.
+
+La ruta `/roles`, protegida por `roles.ver`, consulta roles y el catálogo completo
+de permisos agrupado por módulo. `roles.administrar` habilita el reemplazo completo
+de permisos únicamente para los roles que el backend declara editables. No se
+inventan operaciones de creación, edición, estado o eliminación de roles/permisos.
+
 ## Manejo de errores del frontend
 
 Las validaciones locales se muestran junto al campo correspondiente. Los errores de
