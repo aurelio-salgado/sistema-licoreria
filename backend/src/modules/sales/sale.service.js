@@ -184,6 +184,14 @@ async function hydrate(e, id) {
     repo.listItems(e, id),
     repo.listPayments(e, id),
   ]);
+  if (sale.estado === 'preparacion') {
+    const policy = await repo.discountPolicy(e);
+    if (!policy)
+      throw error(500, 'La configuracion de descuento esta incompleta');
+    sale.discount_policy = {
+      max_percent: money(parsePercentage(policy.valor, 'descuento_maximo')),
+    };
+  }
   return sale;
 }
 function snapshot(s) {

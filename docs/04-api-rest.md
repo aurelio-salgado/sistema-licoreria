@@ -397,7 +397,12 @@ Estados: `preparacion`, `completada`, `anulada`. Filtros: `page`, `limit`, `stat
 `es_efectivo` y `estado`. Solo devuelve registros activos y sirve para construir
 la confirmación; el backend vuelve a validar cada método dentro de la transacción.
 
-`GET /sales/:id` siempre incluye `items` y `payments`. Una preparación o venta sin
+`GET /sales/:id` siempre incluye `items` y `payments`. Cuando el estado es
+`preparacion`, incluye además `discount_policy: { "max_percent": "10.00" }`,
+obtenido exclusivamente de `descuento_maximo` para ayudar a construir la línea. No
+expone otras configuraciones y no sustituye la validación del backend. Las ventas
+completadas o anuladas no incluyen esta política ni recalculan datos históricos.
+Una preparación o venta sin
 pagos devuelve `payments: []`. Cada pago conserva `id_pago`, `monto`, `referencia`,
 `monto_recibido`, `cambio`, `creado_en` y un objeto `method` con
 `id_metodo_pago`, `nombre`, `requiere_referencia` y `es_efectivo`. La consulta es
@@ -570,4 +575,4 @@ No se permiten campos adicionales. Claves editables y tipos:
 
 ## 18. Alcance implementado
 
-La API montada contiene 75 combinaciones método/path en los 17 módulos anteriores. Actualmente no existen routers de reportes, dashboard, respaldos ni restauraciones, aunque el seed reserve permisos para evoluciones futuras. No deben asumirse endpoints para esos módulos hasta que exista implementación real.
+La API montada contiene 76 combinaciones método/path en los 17 módulos anteriores. Actualmente no existen routers de reportes, dashboard, respaldos ni restauraciones, aunque el seed reserve permisos para evoluciones futuras. No deben asumirse endpoints para esos módulos hasta que exista implementación real.

@@ -286,6 +286,13 @@ async function configurationForUpdate(c, keys) {
   );
   return rows;
 }
+async function discountPolicy(c) {
+  const [rows] = await c.execute(
+    'SELECT valor FROM configuracion WHERE clave=? LIMIT 1',
+    ['descuento_maximo'],
+  );
+  return rows[0] || null;
+}
 async function paymentMethodsForUpdate(c, ids) {
   if (!ids.length) return [];
   const placeholders = ids.map(() => '?').join(',');
@@ -441,6 +448,7 @@ module.exports = {
   complete,
   confirmationItemsForUpdate,
   configurationForUpdate,
+  discountPolicy,
   create,
   createCancellationCashMovement,
   createCancellationInventoryMovement,

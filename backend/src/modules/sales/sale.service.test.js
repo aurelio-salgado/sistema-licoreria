@@ -60,8 +60,24 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
     repo.findById = async () => ({ id_venta: 31, estado: 'preparacion' });
     repo.listItems = async () => [];
     repo.listPayments = async () => [];
+    repo.discountPolicy = async () => ({ valor: '10.00' });
     const sale = await service.getSale('31');
     assert.deepEqual(sale.payments, []);
+    assert.deepEqual(sale.discount_policy, { max_percent: '10.00' });
+  });
+
+  await t.test('política consulta solo descuento_maximo', async () => {
+    const calls = [];
+    const policy = await originalRepo.discountPolicy({ execute: async (sql, values) => { calls.push({ sql, values }); return [[{ valor: '12.50' }]] } });
+    assert.deepEqual(policy, { valor: '12.50' });
+    assert.deepEqual(calls[0].values, ['descuento_maximo']);
+    assert.doesNotMatch(calls[0].sql, /impuesto_activo|tasa_impuesto/);
+  });
+
+  await t.test('detalle usa ventas.ver sin exigir configuracion.ver', () => {
+    const source = fs.readFileSync(path.join(__dirname, 'sale.routes.js'), 'utf8');
+    assert.match(source, /router\.get\('\/:id', requirePermission\('ventas\.ver'\), controller\.getSale\)/);
+    assert.doesNotMatch(source, /configuracion\.ver/);
   });
 
   await t.test('detalle conserva pagos históricos y metadatos del método', async () => {
@@ -120,6 +136,7 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
     repo.listPayments = async () => payments;
     const sale = await service.getSale('44');
     assert.deepEqual(sale.payments, payments);
+    assert.equal(Object.hasOwn(sale, 'discount_policy'), false);
   });
 
   await t.test('venta inexistente conserva respuesta 404', async () => {
@@ -167,6 +184,7 @@ test('límite global de descuento por línea de venta', async (t) => {
       findById: async () => ({ id_venta: 10, estado: 'preparacion' }),
       listItems: async () => created ? [{ id_detalle_venta: 81, id_producto: 5, cantidad: '1.000', precio_unitario: '100.00', descuento: created.discount.fixed, impuesto: created.tax.fixed, subtotal: created.subtotal }] : [],
       listPayments: async () => [],
+      discountPolicy: async () => ({ valor: '10.00' }),
       audit: async () => {},
     });
     const operation = service.addItem('10', { id_producto: 5, cantidad: 1, descuento: discount }, actor);

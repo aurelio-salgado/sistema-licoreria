@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FormField } from '../CatalogUi'
-import { formatQuantity } from '../../utils/formatters'
+import { ProductSearchSelect } from '../products/ProductSearchSelect'
+import { formatMoney, formatQuantity } from '../../utils/formatters'
+import { calculateDiscountAmount, generateDiscountOptions, resolveDiscountPercent, resolveSaleUnitPrice } from '../../utils/salesDiscount'
 
 function toDateTimeLocal(value) {
   const match = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/.exec(String(value ?? ''))
@@ -52,15 +54,28 @@ export function SaleHeaderForm({ sale, clients, busy, onCancel, onSubmit }) {
   </form>
 }
 
-export function SaleItemForm({ item, products, busy, onCancel, onSubmit }) {
+export function SaleItemForm({ item, discountPolicy, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState({ id_producto: String(item?.producto?.id_producto ?? ''), cantidad: item?.cantidad ?? '', descuento: item?.descuento ?? '0' })
   const [errors, setErrors] = useState({})
-  const selected = products.find((product) => String(product.id_producto) === values.id_producto)
+  const [selected, setSelected] = useState(null)
+  const [selectedPercent, setSelectedPercent] = useState(item ? null : '0.00')
+  const decisionInitialized = useRef(!item)
+  const unitPrice = resolveSaleUnitPrice(item, selected, values.id_producto)
+  const maxPercent = discountPolicy?.max_percent
+  const discountOptions = useMemo(() => generateDiscountOptions(maxPercent), [maxPercent])
+  const currentSpecial = selectedPercent === 'current'
+  const appliedDiscount = currentSpecial ? item?.descuento ?? '0.00' : calculateDiscountAmount(unitPrice, values.cantidad, selectedPercent)
   const stock = Number(selected?.existencia)
   const minimumStock = Number(selected?.existencia_minima)
   const unitLabel = selected?.unidad?.abreviatura || selected?.unidad?.nombre || 'unidades'
   const formattedStock = selected && Number.isFinite(stock) ? formatQuantity(stock, selected.unidad?.permite_decimales) : '—'
   const availabilityTone = stock <= 0 ? 'empty' : Number.isFinite(minimumStock) && stock <= minimumStock ? 'low' : 'available'
+  useEffect(() => {
+    if (!item || decisionInitialized.current || !selected || !discountOptions.length) return
+    if (String(selected.id_producto) !== String(item.producto?.id_producto)) return
+    setSelectedPercent(resolveDiscountPercent(item.descuento, unitPrice, values.cantidad, discountOptions))
+    decisionInitialized.current = true
+  }, [discountOptions, item, selected, unitPrice, values.cantidad])
   const quantityValidation = (value, product = selected) => {
     const quantityError = decimalError(value, 'La cantidad', 3, true)
     if (quantityError) return quantityError
@@ -74,11 +89,15 @@ export function SaleItemForm({ item, products, busy, onCancel, onSubmit }) {
     }
     return ''
   }
-  const changeProduct = (id) => {
-    const product = products.find((candidate) => String(candidate.id_producto) === id)
+  const changeProduct = useCallback((product) => {
+    const id = product ? String(product.id_producto) : ''
+    const originalProduct = product && item && String(product.id_producto) === String(item.producto?.id_producto)
+    setSelected(product)
     setValues((current) => ({ ...current, id_producto: id }))
-    setErrors((current) => ({ ...current, id_producto: '', cantidad: values.cantidad ? quantityValidation(values.cantidad, product) : current.cantidad }))
-  }
+    setErrors((current) => ({ ...current, id_producto: '', cantidad: '' }))
+    if (originalProduct) { decisionInitialized.current = false; setSelectedPercent(null) }
+    else { decisionInitialized.current = Boolean(product); setSelectedPercent(product ? '0.00' : null) }
+  }, [item])
   const changeQuantity = (value) => {
     setValues((current) => ({ ...current, cantidad: value }))
     setErrors((current) => ({ ...current, cantidad: value ? quantityValidation(value) : '' }))
@@ -88,21 +107,22 @@ export function SaleItemForm({ item, products, busy, onCancel, onSubmit }) {
     const nextErrors = {}
     if (!/^[1-9]\d*$/.test(values.id_producto)) nextErrors.id_producto = 'Selecciona un producto.'
     const quantityError = quantityValidation(values.cantidad)
-    const discountError = decimalError(values.descuento || '0', 'El descuento', 2)
     if (quantityError) nextErrors.cantidad = quantityError
-    if (discountError) nextErrors.descuento = discountError
+    if (!selectedPercent || currentSpecial) nextErrors.descuento = 'Selecciona un porcentaje vigente antes de guardar.'
+    if (appliedDiscount === null) nextErrors.descuento = 'No es posible calcular el descuento con los datos actuales.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
-    onSubmit({ id_producto: Number(values.id_producto), cantidad: Number(values.cantidad), descuento: Number(values.descuento || 0) })
+    onSubmit({ id_producto: Number(values.id_producto), cantidad: Number(values.cantidad), descuento: Number(appliedDiscount) })
   }
   return <form className="sale-form" onSubmit={submit} noValidate>
     <div className="sale-form-grid">
-      <div className="sale-form-span-2"><FormField label="Producto" name="sale_id_producto" error={errors.id_producto} help={selected ? `Unidad: ${selected.unidad?.nombre} · ${selected.unidad?.permite_decimales ? 'Admite decimales' : 'Solo cantidades enteras'} · Precio vigente: C$ ${Number(selected.precio_venta).toFixed(2)}` : undefined}><select id="sale_id_producto" className="form-control" value={values.id_producto} disabled={busy} onChange={(event) => changeProduct(event.target.value)}><option value="">Selecciona un producto</option>{products.map((product) => <option key={product.id_producto} value={product.id_producto}>{product.codigo} · {product.nombre}</option>)}</select></FormField></div>
-      {selected && <div className={`sale-availability sale-availability--${availabilityTone} sale-form-span-2`} role="status" aria-live="polite"><span>{availabilityTone === 'empty' ? 'Agotado' : 'Disponible en inventario'}</span><strong>{availabilityTone === 'empty' ? `0 ${unitLabel}` : `${formattedStock} ${unitLabel}`}</strong><small>{selected.unidad?.permite_decimales ? 'La unidad permite cantidades decimales.' : 'La unidad admite únicamente cantidades enteras.'}</small></div>}
+      <div className="sale-form-span-2"><ProductSearchSelect selectedId={values.id_producto} selectedProduct={selected} busy={busy} onSelect={changeProduct} />{errors.id_producto && <span className="form-message--error">{errors.id_producto}</span>}</div>
+      {selected && <div className={`sale-product-summary sale-product-summary--${availabilityTone} sale-form-span-2`} role="status" aria-live="polite"><div><span>Precio</span><strong>{formatMoney(unitPrice)}</strong></div><div><span>Disponible</span><strong>{availabilityTone === 'empty' ? `0 ${unitLabel}` : `${formattedStock} ${unitLabel}`}</strong></div></div>}
       <FormField label="Cantidad" name="sale_cantidad" error={errors.cantidad} help={selected?.unidad?.permite_decimales === false ? 'Esta unidad admite únicamente enteros.' : 'Mayor que cero · máximo 3 decimales'}><input id="sale_cantidad" className="form-control" type="number" min={selected?.unidad?.permite_decimales === false ? '1' : '0.001'} max={Number.isFinite(stock) ? stock : undefined} step={selected?.unidad?.permite_decimales === false ? '1' : '0.001'} value={values.cantidad} disabled={busy || availabilityTone === 'empty'} onChange={(event) => changeQuantity(event.target.value)} /></FormField>
-      <FormField label="Descuento" name="sale_descuento" error={errors.descuento} help="Importe monetario, no porcentaje"><input id="sale_descuento" className="form-control" type="number" min="0" step="0.01" value={values.descuento} disabled={busy} onChange={(event) => setValues((current) => ({ ...current, descuento: event.target.value }))} /></FormField>
+      {currentSpecial && <div className="inline-alert inline-alert--warning sale-form-span-2" role="alert">El descuento almacenado no coincide con una opción permitida por la política vigente. Se conserva visualmente en {formatMoney(item.descuento)}; selecciona un porcentaje vigente antes de guardar.</div>}
+      <FormField label="Descuento" name="sale_discount_percent" error={errors.descuento} help={maxPercent === undefined ? 'La política de descuento no está disponible.' : undefined}><select id="sale_discount_percent" className="form-control" value={selectedPercent ?? ''} disabled={busy || !selected || !discountOptions.length} onChange={(event) => { setSelectedPercent(event.target.value); setErrors((current) => ({ ...current, descuento: '' })) }}><option value="" disabled>Selecciona una opción</option>{currentSpecial && <option value="current">Descuento actual: {formatMoney(item.descuento)}</option>}{discountOptions.map((percent) => <option key={percent} value={percent}>{percent === '0.00' ? 'Sin descuento' : `${Number(percent).toLocaleString('es-NI', { maximumFractionDigits: 2 })} %`}</option>)}</select></FormField>
     </div>
-    <div className="modal-footer sale-form-actions"><button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button><button className="button button--primary" type="submit" disabled={busy || availabilityTone === 'empty'}>{busy ? 'Guardando…' : 'Guardar línea'}</button></div>
+    <div className="modal-footer sale-form-actions"><button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button><button className="button button--primary" type="submit" disabled={busy || availabilityTone === 'empty' || !selectedPercent || currentSpecial || appliedDiscount === null}>{busy ? 'Guardando…' : 'Guardar línea'}</button></div>
   </form>
 }
 
