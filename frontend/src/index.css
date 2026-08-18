@@ -387,6 +387,45 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
 .cash-close-preview span { color: var(--color-text-muted); }
 .cash-detail-actions { margin-top: 20px; }
 
+.inventory-tabs { margin-bottom: 16px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.inventory-tab { min-height: 42px; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--color-text-muted); background: transparent; font-weight: 800; cursor: pointer; }
+.inventory-tab:hover { color: var(--color-text); background: #eceae4; }
+.inventory-tab--active { border-color: #ead9b9; color: #72501d; background: var(--color-primary-soft); }
+.inventory-tab span { min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 999px; color: white; background: var(--color-warning); font-size: 10px; }
+.inventory-panel { min-height: 420px; }
+.inventory-panel-heading { margin-bottom: 20px; display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.inventory-panel-heading h2 { margin: 0 0 5px; font-size: 20px; }
+.inventory-panel-heading p { margin: 0; color: var(--color-text-muted); font-size: 13px; }
+.inventory-panel-heading .filter-field { width: 190px; flex: 0 0 auto; }
+.inventory-stock-table { min-width: 970px; }
+.inventory-low-table { min-width: 720px; }
+.inventory-stock-table td:nth-child(4), .inventory-stock-table th:nth-child(4), .inventory-stock-table td:nth-child(5), .inventory-stock-table th:nth-child(5), .inventory-low-table td:nth-child(2), .inventory-low-table th:nth-child(2), .inventory-low-table td:nth-child(3), .inventory-low-table th:nth-child(3) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stock-badge, .movement-nature { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.stock-badge::before, .movement-nature::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.stock-badge--normal, .movement-nature--entrada { color: var(--color-success); border-color: #c9ddcf; background: var(--color-success-soft); }
+.stock-badge--low { color: var(--color-warning); border-color: #ecd4ad; background: var(--color-warning-soft); }
+.stock-badge--empty, .movement-nature--salida { color: var(--color-danger); border-color: #ecc8cc; background: var(--color-danger-soft); }
+.inventory-filters { margin-bottom: 20px; display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; }
+.inventory-movements-table { min-width: 1580px; }
+.inventory-movements-table td:nth-child(n+5):nth-child(-n+7), .inventory-movements-table th:nth-child(n+5):nth-child(-n+7) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inventory-positive { color: var(--color-success); }
+.inventory-negative { color: var(--color-danger); }
+.inventory-reason { min-width: 210px; max-width: 310px; white-space: normal; line-height: 1.45; }
+.adjustment-form { display: grid; gap: 18px; }
+.adjustment-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.adjustment-stock-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.adjustment-stock-summary > div { padding: 13px; display: grid; gap: 5px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #faf9f6; }
+.adjustment-stock-summary span { color: var(--color-text-muted); font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.adjustment-stock-summary strong { font-size: 15px; }
+.adjustment-preview { padding: 13px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; border: 1px solid #c9ddcf; border-radius: var(--radius-sm); background: var(--color-success-soft); }
+.adjustment-preview span { color: var(--color-success); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.adjustment-preview strong { grid-row: span 2; align-self: center; color: var(--color-success); font-variant-numeric: tabular-nums; }
+.adjustment-preview small { color: var(--color-text-muted); }
+.adjustment-preview--danger { border-color: #ecc8cc; background: var(--color-danger-soft); }
+.adjustment-preview--danger span, .adjustment-preview--danger strong { color: var(--color-danger); }
+.adjustment-cost-note { margin: 0; border-left: 3px solid var(--color-primary); padding: 10px 12px; color: var(--color-text-muted); background: #faf9f6; font-size: 12px; }
+.adjustment-form-actions { margin: 4px -22px -22px; }
+
 .feedback-state, .result-page { min-height: 320px; padding: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .feedback-state--full, .result-page--standalone { min-height: 100vh; background: var(--color-background); }
 .feedback-state h1, .result-page h1 { margin: 12px 0 8px; font-size: 28px; }
@@ -420,6 +459,7 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
   .purchase-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sale-filters { grid-template-columns: repeat(3, minmax(145px, 1fr)); }
   .cash-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inventory-filters { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
 }
 
 @media (max-width: 650px) {
@@ -476,6 +516,11 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
   .cash-actions { align-items: stretch; flex-direction: column; }
   .cash-actions .button { width: 100%; }
   .cash-close-button { margin-left: 0; }
+  .inventory-panel-heading { align-items: stretch; flex-direction: column; }
+  .inventory-panel-heading .filter-field { width: 100%; }
+  .inventory-filters, .adjustment-form-grid, .adjustment-stock-summary { grid-template-columns: 1fr; }
+  .adjustment-preview { grid-template-columns: 1fr; }
+  .adjustment-preview strong { grid-row: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

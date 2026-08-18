@@ -14,6 +14,7 @@ import { SaleDetailPage } from './pages/SaleDetailPage'
 import { SalesPage } from './pages/SalesPage'
 import { CashDetailPage } from './pages/CashDetailPage'
 import { CashPage } from './pages/CashPage'
+import { InventoryPage } from './pages/InventoryPage'
 import { PermissionRoute } from './routes/PermissionRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { PublicOnlyRoute } from './routes/PublicOnlyRoute'
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="sales/:id" element={<PermissionRoute permission="ventas.ver"><SaleDetailPage /></PermissionRoute>} />
               <Route path="cash" element={<PermissionRoute permission="caja.movimientos"><CashPage /></PermissionRoute>} />
               <Route path="cash/:id" element={<PermissionRoute permission="caja.movimientos"><CashDetailPage /></PermissionRoute>} />
+              <Route path="inventory" element={<PermissionRoute permission="inventario.ver"><InventoryPage /></PermissionRoute>} />
             </Route>
           </Route>
 

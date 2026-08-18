@@ -57,6 +57,17 @@ ingresos y egresos manuales, movimientos de ventas y anulaciones, cierre e
 historial. El monto esperado mostrado durante el turno es una ayuda calculada con
 movimientos reales; el backend conserva la autoridad sobre el cierre y diferencia.
 
+## Inventario
+
+La ruta `/inventory`, protegida por `inventario.ver`, reúne existencias, productos
+con stock bajo y movimientos paginados. Los listados consumen los filtros reales
+del backend y representan cantidades según la unidad permita o no decimales.
+
+Los usuarios con `inventario.ajustar` pueden registrar entradas y salidas mediante
+un formulario modal con motivo obligatorio, vista previa y validaciones locales de
+cantidad. El backend conserva la autoridad sobre existencia, producto activo y
+registro transaccional. Los ajustes no modifican el costo promedio.
+
 ## Manejo de errores del frontend
 
 Las validaciones locales se muestran junto al campo correspondiente. Los errores de
