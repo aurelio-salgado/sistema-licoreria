@@ -17,6 +17,6 @@ export const navigationItems = [
   { label: 'Proveedores', path: '/suppliers', permission: 'proveedores.ver', icon: 'PV', available: true },
   { label: 'Usuarios', path: '/users', permission: 'usuarios.ver', icon: 'US', available: true },
   { label: 'Roles y permisos', path: '/roles', permission: 'roles.ver', icon: 'RP', available: true },
-  { label: 'Bitácora', permission: 'bitacora.ver', icon: 'BI' },
-  { label: 'Configuración', permission: 'configuracion.ver', icon: 'CF' },
+  { label: 'Bitácora', path: '/audit', permission: 'bitacora.ver', icon: 'BI', available: true },
+  { label: 'Configuración', path: '/settings', permission: 'configuracion.ver', icon: 'CF', available: true },
 ]

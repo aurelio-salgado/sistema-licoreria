@@ -80,6 +80,23 @@ de permisos agrupado por módulo. `roles.administrar` habilita el reemplazo comp
 de permisos únicamente para los roles que el backend declara editables. No se
 inventan operaciones de creación, edición, estado o eliminación de roles/permisos.
 
+## Configuración general
+
+La ruta `/settings`, protegida por `configuracion.ver`, presenta los parámetros
+reales agrupados en General, Fiscal, Caja y Comprobantes. `configuracion.editar`
+habilita cambios individuales mediante `PUT /settings/:key`; `descuento_maximo` es
+el porcentaje máximo configurable por línea de venta y
+`siguiente_numero_comprobante` permanece en solo lectura. Los
+cambios operativos sensibles requieren confirmación y el backend conserva las
+validaciones y reglas definitivas.
+
+## Bitácora
+
+La ruta `/audit`, protegida por `bitacora.ver`, ofrece consulta paginada, filtros
+admitidos por la API y detalle de cada evento con sus datos anteriores y nuevos
+sanitizados por el backend. Es una pantalla estrictamente de lectura y no incorpora
+acciones de creación, edición ni eliminación.
+
 ## Manejo de errores del frontend
 
 Las validaciones locales se muestran junto al campo correspondiente. Los errores de
