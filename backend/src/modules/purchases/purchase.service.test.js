@@ -104,7 +104,6 @@ function scenario(options = {}) {
           }
         : null,
     configurationForUpdate: async () => [
-      { clave: 'descuento_maximo', valor: options.maxDiscount ?? '10.00' },
       { clave: 'impuesto_activo', valor: 'true' },
       { clave: 'tasa_impuesto', valor: '15.00' },
     ],
@@ -188,12 +187,16 @@ test('rechaza impuesto controlado por cliente', async () => {
   );
 });
 
-test('rechaza descuento superior al máximo', async () => {
+test('acepta descuento de proveedor sin aplicar el máximo comercial de ventas', async () => {
   const context = scenario();
-  await assert.rejects(
-    service.addItem('11', { ...itemBody, descuento: 2.01 }, actor),
-    (error) => error.statusCode === 400,
-  );
+  await service.addItem('11', { ...itemBody, descuento: 15 }, actor);
+  assert.equal(context.calls.createdItems[0].data.discount.fixed, '15.00');
+  assert.equal(context.transaction.commit, 1);
+});
+
+test('rechaza descuento de compra superior al subtotal', async () => {
+  const context = scenario();
+  await assert.rejects(service.addItem('11', { ...itemBody, descuento: 20.01 }, actor), (error) => error.statusCode === 400);
   assert.equal(context.transaction.rollback, 1);
 });
 

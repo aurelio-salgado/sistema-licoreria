@@ -355,7 +355,7 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 ### RN-COM-003 — Cálculo definitivo de compras
 
-**Descripción:** El backend calculará los subtotales, descuentos autorizados, impuestos configurados y total definitivo de la compra.
+**Descripción:** El backend calculará los subtotales, descuentos monetarios concedidos por el proveedor, impuestos configurados y total definitivo de la compra. El límite comercial `descuento_maximo` no aplica a compras.
 
 **Aplica a:** Compras y configuración.
 
@@ -471,7 +471,7 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 ### RN-VEN-004 — Cálculo definitivo de ventas
 
-**Descripción:** El backend calculará precios aplicables, descuentos autorizados, impuestos configurados, subtotal y total definitivo.
+**Descripción:** El backend calculará precios aplicables, descuentos autorizados, impuestos configurados, subtotal y total definitivo. Cada descuento de línea es un importe monetario y no podrá superar el porcentaje global `descuento_maximo` configurado para ventas.
 
 **Aplica a:** Ventas y configuración.
 
@@ -793,15 +793,15 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 **Descripción:** Los cambios de configuración se aplicarán a operaciones futuras y las operaciones históricas conservarán los valores con los que fueron confirmadas.
 
-**Aplica a:** Impuestos, descuentos, comprobantes, compras y ventas.
+**Aplica a:** Impuestos, descuentos comerciales de ventas, comprobantes, compras y ventas.
 
 **Validación:** Una modificación afectará nuevas operaciones sin recalcular ni sobrescribir registros confirmados anteriores.
 
 ### RN-CON-003 — Rangos configurables válidos
 
-**Descripción:** Las tasas de impuesto y los descuentos deberán encontrarse dentro de los rangos válidos aprobados, sin fijar porcentajes en este documento.
+**Descripción:** Las tasas de impuesto y el porcentaje global `descuento_maximo` deberán encontrarse entre 0 y 100. Este último limita exclusivamente los descuentos concedidos al cliente por línea de venta.
 
-**Aplica a:** Configuración, compras y ventas.
+**Aplica a:** Configuración y ventas.
 
 **Validación:** El backend rechazará valores fuera de los rangos que se definan formalmente.
 
@@ -815,7 +815,7 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 ### RN-CON-005 — Protección de configuración crítica
 
-**Descripción:** Las configuraciones críticas solo podrán modificarse con permiso explícito; los límites exactos de descuento y las tasas de impuesto permanecerán pendientes hasta su aprobación.
+**Descripción:** Las configuraciones críticas solo podrán modificarse con permiso explícito. La tasa de impuesto y el porcentaje máximo de descuento en ventas se validan entre 0 y 100.
 
 **Aplica a:** Configuración general, roles y permisos.
 

@@ -12,7 +12,6 @@ const MAX_MONEY_CENTS = 999999999999n;
 const MAX_STOCK_MILLIS = 999999999999n;
 const PERCENT_SCALE = 10000n;
 const FISCAL_CONFIGURATION_KEYS = [
-  'descuento_maximo',
   'impuesto_activo',
   'tasa_impuesto',
 ];
@@ -86,10 +85,6 @@ function parseFiscalConfiguration(rows) {
   return {
     taxActive: taxActive === 'true',
     taxRate: parsePercentage(values.get('tasa_impuesto'), 'tasa_impuesto'),
-    maximumDiscount: parsePercentage(
-      values.get('descuento_maximo'),
-      'descuento_maximo',
-    ),
   };
 }
 
@@ -116,10 +111,7 @@ function calculateLine(data, configuration) {
       'El subtotal de la línea está fuera del rango permitido',
     );
   }
-  if (
-    data.discount.units * PERCENT_SCALE >
-    grossCents * configuration.maximumDiscount
-  ) {
+  if (data.discount.units > grossCents) {
     throw httpError(
       400,
       'El descuento no puede superar el subtotal de la línea',
@@ -506,8 +498,7 @@ function validateConfirmationData(items, products, configuration) {
     const expectedSubtotal = (quantity * unitCost + 500n) / 1000n;
     if (
       lineSubtotal !== expectedSubtotal ||
-      lineDiscount * PERCENT_SCALE >
-        expectedSubtotal * configuration.maximumDiscount
+      lineDiscount > expectedSubtotal
     ) {
       throw httpError(
         400,

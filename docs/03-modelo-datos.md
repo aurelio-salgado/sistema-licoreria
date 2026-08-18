@@ -638,7 +638,7 @@ El modelo actual no conserva `costo_promedio_anterior` ni un kardex valorizado. 
 - **Claves foráneas:** `id_usuario_actualizacion` → `usuarios`.
 - **Restricciones únicas:** `clave`.
 - **Índices recomendados:** `clave`, `es_critica`.
-- **Reglas de integridad:** validar tipo y rango; incluir datos del negocio, impuesto, descuentos, numeración, seguridad y control de caja; cambios solo prospectivos.
+- **Reglas de integridad:** validar tipo y rango; `descuento_maximo` es un porcentaje entre 0 y 100 que limita exclusivamente el descuento monetario concedido por línea de venta; incluir datos del negocio, impuesto, numeración, seguridad y control de caja; cambios solo prospectivos.
 - **Política de eliminación o desactivación:** no eliminar claves requeridas; cambios críticos se auditan y la estrategia de historial de valores queda pendiente.
 
 ### 7.23 `respaldos`
@@ -858,7 +858,7 @@ Las relaciones desde `ventas` hacia `cajas`, desde `ventas` hacia `movimientos_c
 ## 15. Decisiones pendientes
 
 1. Tasa inicial de impuesto, rangos válidos y reglas de redondeo.
-2. Tipos, límites y rangos de descuentos.
+2. Evoluciones futuras de descuentos distintas del límite porcentual global aprobado para ventas.
 3. Datos obligatorios y normalización de clientes y proveedores.
 4. Formato, serie y numeración inicial de ventas, compras y comprobantes.
 5. Política de retención, ubicación, cifrado, validación y eliminación de archivos de respaldo.

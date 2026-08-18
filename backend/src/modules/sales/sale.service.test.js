@@ -137,7 +137,64 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
     assert.equal(queriedChildren, false);
   });
 
+Object.assign(repo, originalRepo);
+});
+
+test('límite global de descuento por línea de venta', async (t) => {
+  const actor = { userId: 20, ipAddress: '127.0.0.1' };
+  const runAddItem = async (discount) => {
+    const transaction = { commit: 0, rollback: 0 };
+    const connection = {
+      beginTransaction: async () => {},
+      commit: async () => transaction.commit++,
+      rollback: async () => transaction.rollback++,
+      release() {},
+    };
+    let created;
+    pool.getConnection = async () => connection;
+    Object.assign(repo, {
+      findByIdForUpdate: async () => ({ id_venta: 10, estado: 'preparacion' }),
+      findProductForUpdate: async () => ({ id_producto: 5, estado: 'activo', permite_decimales: false, precio_venta: '100.00', costo_promedio: '60.00' }),
+      findItemByProduct: async () => null,
+      configurationForUpdate: async () => [
+        { clave: 'descuento_maximo', valor: '10.00' },
+        { clave: 'impuesto_activo', valor: 'true' },
+        { clave: 'tasa_impuesto', valor: '15.00' },
+      ],
+      createItem: async (_connection, _saleId, data) => { created = data; return 81 },
+      amounts: async () => created ? [{ subtotal: created.subtotal, descuento: created.discount.fixed, impuesto: created.tax.fixed }] : [],
+      updateTotals: async () => {},
+      findById: async () => ({ id_venta: 10, estado: 'preparacion' }),
+      listItems: async () => created ? [{ id_detalle_venta: 81, id_producto: 5, cantidad: '1.000', precio_unitario: '100.00', descuento: created.discount.fixed, impuesto: created.tax.fixed, subtotal: created.subtotal }] : [],
+      listPayments: async () => [],
+      audit: async () => {},
+    });
+    const operation = service.addItem('10', { id_producto: 5, cantidad: 1, descuento: discount }, actor);
+    return { operation, transaction, created: () => created };
+  };
+
+  await t.test('permite un descuento inferior al máximo sin alterar el impuesto', async () => {
+    const context = await runAddItem(9);
+    await context.operation;
+    assert.equal(context.created().discount.fixed, '9.00');
+    assert.equal(context.created().tax.fixed, '13.65');
+    assert.equal(context.transaction.commit, 1);
+  });
+  await t.test('permite un descuento exactamente igual al máximo', async () => {
+    const context = await runAddItem(10);
+    await context.operation;
+    assert.equal(context.created().discount.fixed, '10.00');
+    assert.equal(context.transaction.commit, 1);
+  });
+  await t.test('rechaza en backend una petición manipulada superior al máximo', async () => {
+    const context = await runAddItem(10.01);
+    await assert.rejects(context.operation, (error) => error.statusCode === 400);
+    assert.equal(context.transaction.rollback, 1);
+    assert.equal(context.created(), undefined);
+  });
+
   Object.assign(repo, originalRepo);
+  pool.getConnection = originalGetConnection;
 });
 
 function scenario(options = {}) {

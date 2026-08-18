@@ -330,7 +330,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-025 — Cálculo de compra
 
-**Descripción:** El backend calculará subtotal, descuento autorizado, impuesto configurable y total de la compra a partir de su detalle.
+**Descripción:** El backend calculará subtotal, descuento monetario concedido por el proveedor, impuesto configurable y total de la compra a partir de su detalle. El límite comercial de descuentos en ventas no aplica a compras.
 
 **Actor principal:** Sistema.
 
@@ -444,7 +444,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-036 — Cálculo de venta
 
-**Descripción:** El backend calculará precios, descuentos autorizados, impuestos configurables, subtotal y total definitivo de la venta.
+**Descripción:** El backend calculará precios, descuentos autorizados, impuestos configurables, subtotal y total definitivo de la venta. El descuento de línea es un importe monetario limitado por el porcentaje global máximo configurado para ventas.
 
 **Actor principal:** Sistema.
 
@@ -707,6 +707,11 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 **Prioridad:** Media.
 
 **Criterio básico de aceptación:** Los cambios válidos se reflejan en comprobantes posteriores sin modificar documentos históricos.
+
+La configuración `descuento_maximo` representa un porcentaje global entre 0 y 100,
+editable por el Administrador con `configuracion.editar`. Limita los descuentos
+monetarios concedidos al cliente por línea de venta y no limita los descuentos
+recibidos de proveedores en compras.
 
 ## 10. Requerimientos no funcionales
 

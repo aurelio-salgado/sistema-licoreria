@@ -257,7 +257,7 @@ Filtros: `page`, `limit`, `search`, `status`, `id_categoria`, `id_marca`. `searc
 
 Categoría, marca y unidad deben existir y estar activas. Código y código de barras opcional son únicos. Precio de venta debe ser mayor que cero. `existencia` está prohibida en este CRUD: solo cambia mediante compras, ventas, anulaciones o ajustes.
 
-Política de costo: `POST` acepta `costo_promedio` no negativo y usa `0.00` si se omite, siempre con existencia inicial cero. En `PUT` es opcional: omitirlo conserva el valor vigente; con existencia cero puede corregirse, y con existencia positiva solo se admite un valor monetariamente equivalente al actual. Durante la operación, confirmar una compra es la fuente normal que lo recalcula ponderadamente. Los ajustes y las anulaciones no lo cambian. `porcentaje_impuesto` se conserva como dato del producto, pero no interviene en la política fiscal vigente: compras y ventas usan exclusivamente `impuesto_activo`, `tasa_impuesto` y `descuento_maximo` globales.
+Política de costo: `POST` acepta `costo_promedio` no negativo y usa `0.00` si se omite, siempre con existencia inicial cero. En `PUT` es opcional: omitirlo conserva el valor vigente; con existencia cero puede corregirse, y con existencia positiva solo se admite un valor monetariamente equivalente al actual. Durante la operación, confirmar una compra es la fuente normal que lo recalcula ponderadamente. Los ajustes y las anulaciones no lo cambian. `porcentaje_impuesto` se conserva como dato del producto, pero no interviene en la política fiscal vigente: compras y ventas usan `impuesto_activo` y `tasa_impuesto` globales; `descuento_maximo` aplica exclusivamente a las líneas de venta.
 
 Respuesta de listado: `{ products, pagination }`; mutaciones/detalle: `{ product }`. Estado: `{ "estado": "inactivo" }`.
 
@@ -353,17 +353,17 @@ Línea para `POST` y `PUT`:
 
 Cantidad debe ser mayor que cero; costo y descuento son no negativos. No se admite el mismo producto dos veces. La unidad debe permitir fracciones cuando la cantidad no es entera. El cliente no puede enviar `subtotal` ni `impuesto`.
 
-Política fiscal, aplicada al agregar/editar y nuevamente al confirmar:
+Política de cálculo, aplicada al agregar/editar y nuevamente al confirmar:
 
 ```text
 subtotal = cantidad × costo_unitario
-descuento <= subtotal × descuento_maximo / 100
+descuento <= subtotal
 base = subtotal - descuento
 impuesto = impuesto_activo ? redondear(base × tasa_impuesto / 100) : 0
 total = subtotal - descuento + impuesto
 ```
 
-Los importes se redondean a centavos con la aritmética entera del backend. `descuento_maximo` es un porcentaje global entre 0 y 100.
+Los importes se redondean a centavos con la aritmética entera del backend. El descuento de compra es un importe monetario concedido por el proveedor y no está limitado por `descuento_maximo`, cuya política comercial aplica exclusivamente a ventas.
 
 `POST /purchases/:id/confirm` no recibe body funcional. Exige proveedor activo y al menos una línea, vuelve a validar productos, unidades, descuentos y configuración; aumenta existencia, recalcula `costo_promedio` ponderado, registra un movimiento por línea, recalcula totales y cambia a `recibida` en una transacción.
 
@@ -421,7 +421,7 @@ Línea:
 { "id_producto": 1, "cantidad": 2, "descuento": 0 }
 ```
 
-El producto debe estar activo, no puede repetirse y su unidad debe aceptar la cantidad. El backend toma `precio_unitario` del producto al agregar o cambiar el producto, conserva `costo_unitario_historico`, y calcula subtotal e impuesto. El cliente no puede enviar precio, costo histórico, subtotal ni impuesto. En el borrador rige la misma fórmula fiscal y límite porcentual descritos para compras; la configuración vigente se reaplica al confirmar.
+El producto debe estar activo, no puede repetirse y su unidad debe aceptar la cantidad. El backend toma `precio_unitario` del producto al agregar o cambiar el producto, conserva `costo_unitario_historico`, y calcula subtotal e impuesto. El cliente no puede enviar precio, costo histórico, subtotal ni impuesto. `descuento` es un importe monetario, pero no puede superar `subtotal × descuento_maximo / 100`; `descuento_maximo` es un porcentaje global entre 0 y 100 y la configuración vigente se reaplica al confirmar.
 
 Confirmación con pagos:
 
@@ -562,10 +562,11 @@ No se permiten campos adicionales. Claves editables y tipos:
 | `nombre_negocio` | Texto obligatorio, máximo 150. |
 | `impuesto_activo` | String exacto `"true"` o `"false"`. |
 | `tasa_impuesto` | Número JSON de `0` a `100`, máximo dos decimales. |
+| `descuento_maximo` | Número JSON de `0` a `100`, máximo dos decimales; porcentaje máximo por línea de venta. |
 | `control_caja_activo` | String exacto `"true"` o `"false"`. |
 | `serie_comprobante` | Texto de 1 a 20, solo letras, números y guiones; una serie histórica no puede reutilizarse como cambio conflictivo. |
 
-`descuento_maximo` y `siguiente_numero_comprobante` son visibles pero de solo lectura y responden `409` al intentar modificarlos. Una clave fuera de las siete visibles responde `404`. Respuesta correcta: `{ "setting": { "clave": "nombre_negocio", "valor": "Mi licorería" } }` junto con sus demás metadatos.
+`siguiente_numero_comprobante` es visible pero de solo lectura y responde `409` al intentar modificarlo. `descuento_maximo` es editable con `configuracion.editar`, se audita como los demás cambios críticos y solo limita descuentos concedidos al cliente en ventas. Una clave fuera de las siete visibles responde `404`. Respuesta correcta: `{ "setting": { "clave": "nombre_negocio", "valor": "Mi licorería" } }` junto con sus demás metadatos.
 
 ## 18. Alcance implementado
 

@@ -12,6 +12,7 @@ const EDITABLE_KEYS = new Set([
   'nombre_negocio',
   'impuesto_activo',
   'tasa_impuesto',
+  'descuento_maximo',
   'control_caja_activo',
   'serie_comprobante',
 ]);
@@ -112,6 +113,7 @@ function validateValue(key, value) {
     case 'control_caja_activo':
       return validateLogicalValue(value);
     case 'tasa_impuesto':
+    case 'descuento_maximo':
       return validateTaxRate(value);
     case 'serie_comprobante':
       return validateSeries(value);
