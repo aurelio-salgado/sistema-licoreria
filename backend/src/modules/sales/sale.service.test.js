@@ -157,6 +157,60 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
 Object.assign(repo, originalRepo);
 });
 
+test('estado operativo de ventas respecto a caja', async (t) => {
+  await t.test('repositorio usa dos consultas de solo lectura y el usuario recibido', async () => {
+    const calls = [];
+    const result = await originalRepo.operationalStatus({
+      execute: async (sql, values) => {
+        calls.push({ sql, values });
+        return calls.length === 1 ? [[{ valor: 'true' }]] : [[{ id_caja: 8 }]];
+      },
+    }, 27);
+    assert.deepEqual(result, { configuration: { valor: 'true' }, cashboxes: [{ id_caja: 8 }] });
+    assert.deepEqual(calls[0].values, ['control_caja_activo']);
+    assert.deepEqual(calls[1].values, [27]);
+    assert.match(calls[1].sql, /id_usuario=\? AND estado='abierta'/);
+    assert.doesNotMatch(calls.map(({ sql }) => sql).join(' '), /\b(?:INSERT|UPDATE|DELETE)\b/i);
+  });
+
+  await t.test('expone únicamente booleanos para control desactivado sin caja', async () => {
+    repo.operationalStatus = async () => ({ configuration: { valor: 'false' }, cashboxes: [] });
+    assert.deepEqual(await service.getOperationalStatus(27), {
+      control_caja_activo: false,
+      caja_abierta: false,
+    });
+  });
+
+  await t.test('distingue control activo sin caja y con exactamente una caja', async () => {
+    repo.operationalStatus = async () => ({ configuration: { valor: 'true' }, cashboxes: [] });
+    assert.deepEqual(await service.getOperationalStatus(27), { control_caja_activo: true, caja_abierta: false });
+    repo.operationalStatus = async () => ({ configuration: { valor: 'true' }, cashboxes: [{ id_caja: 8 }] });
+    assert.deepEqual(await service.getOperationalStatus(27), { control_caja_activo: true, caja_abierta: true });
+  });
+
+  await t.test('ruta antecede a :id y requiere solamente ventas.crear', () => {
+    const source = fs.readFileSync(path.join(__dirname, 'sale.routes.js'), 'utf8');
+    const route = source.indexOf("'/operational-status'");
+    assert.ok(route > -1 && route < source.indexOf("'/:id'"));
+    const contract = source.slice(route, source.indexOf("router.get('/:id'"));
+    assert.match(contract, /requirePermission\('ventas\.crear'\)/);
+    assert.doesNotMatch(contract, /configuracion\.ver|caja\.movimientos/);
+  });
+
+  await t.test('confirmación conserva la validación autoritativa y el rechazo sin caja', () => {
+    const source = fs.readFileSync(path.join(__dirname, 'sale.service.js'), 'utf8');
+    const confirmation = source.slice(
+      source.indexOf('async function confirmSale'),
+      source.indexOf('async function cancelSale'),
+    );
+    assert.match(confirmation, /config\.get\('control_caja_activo'\)/);
+    assert.match(confirmation, /openCashboxesForUpdate\(c, sale\.id_usuario\)/);
+    assert.match(confirmation, /El vendedor no tiene una caja abierta/);
+  });
+
+  Object.assign(repo, originalRepo);
+});
+
 test('límite global de descuento por línea de venta', async (t) => {
   const actor = { userId: 20, ipAddress: '127.0.0.1' };
   const runAddItem = async (discount) => {

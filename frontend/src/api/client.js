@@ -74,6 +74,21 @@ export async function apiRequest(
   return data
 }
 
+export async function apiDownload(path, { handleUnauthorized = true } = {}) {
+  const headers = new Headers()
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+  let response
+  try { response = await fetch(`${API_URL}${path}`, { method: 'GET', headers }) }
+  catch { throw new ApiError('No fue posible conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.') }
+  if (!response.ok) {
+    const data = await parseResponse(response)
+    if (response.status === 401 && handleUnauthorized) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+    throw new ApiError(data?.message || 'No fue posible descargar el archivo.', { status: response.status, data })
+  }
+  const disposition = response.headers.get('content-disposition') || ''
+  return { blob: await response.blob(), filename: /filename="([^"]+)"/.exec(disposition)?.[1] || 'liquorix_reporte.xlsx' }
+}
+
 export const api = {
   get: (path, options) => apiRequest(path, { ...options, method: 'GET' }),
   post: (path, body, options) =>

@@ -18,5 +18,6 @@ export const navigationItems = [
   { label: 'Usuarios', path: '/users', permission: 'usuarios.ver', icon: 'US', available: true },
   { label: 'Roles y permisos', path: '/roles', permission: 'roles.ver', icon: 'RP', available: true },
   { label: 'Bitácora', path: '/audit', permission: 'bitacora.ver', icon: 'BI', available: true },
+  { label: 'Reportes', path: '/reports', permission: 'reportes.ver', icon: 'RE', available: true },
   { label: 'Configuración', path: '/settings', permission: 'configuracion.ver', icon: 'CF', available: true },
 ]

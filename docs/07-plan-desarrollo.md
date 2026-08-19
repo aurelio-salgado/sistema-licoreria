@@ -49,6 +49,10 @@ Las preparaciones admiten encabezado y líneas editables; la confirmación regis
 uno o varios métodos de pago activos y muestra la factura generada por el backend.
 Las ventas completadas conservan sus pagos históricos y pueden anularse de forma
 controlada según permisos, inventario y reglas de caja.
+Antes de iniciar una preparación, la interfaz consulta el estado operativo mínimo
+de Ventas. Cuando el control está activo y falta una caja abierta, muestra una
+indicación preventiva y ofrece acceso a Caja únicamente con `caja.abrir`; la
+confirmación del backend continúa siendo la autoridad final.
 
 ## Caja
 
@@ -103,3 +107,16 @@ Las validaciones locales se muestran junto al campo correspondiente. Los errores
 acciones enviados por la API se presentan en un diálogo accesible y contextual; los
 errores al cargar una pantalla conservan su estado con opción de reintento. Una
 respuesta `401` mantiene el flujo global de sesión expirada.
+
+## Dashboard y reportes
+
+La ruta `/dashboard` muestra una bienvenida y accesos autorizados con `dashboard.ver`.
+Los indicadores diarios, las ventas recientes y los tres gráficos agregados requieren
+`dashboard.graficos`; estos últimos admiten período y vendedor. La ruta `/reports`, protegida por `reportes.ver`,
+ofrece los ocho reportes aprobados con filtros y paginación remotos. Los usuarios con
+`reportes.exportar` pueden descargar el conjunto filtrado completo como XLSX generado
+por el backend; la exportación se limita a 10 000 filas y conserva las mismas columnas
+y reglas que la consulta JSON.
+En la experiencia básica, quienes poseen `ventas.crear` reciben el estado operativo
+de su propia caja. La advertencia y los accesos rápidos se adaptan sin mostrar
+indicadores financieros ni configuraciones administrativas.

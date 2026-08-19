@@ -1,0 +1,34 @@
+import { useEffect, useState } from 'react'
+import { reportsApi } from '../api/reports'
+import { useAuth } from '../auth/useAuth'
+import { ErrorDialog, PageHeader, Pagination } from '../components/CatalogUi'
+import { LoadingState } from '../components/FeedbackStates'
+import { formatMoney } from '../utils/formatters'
+
+const definitions={
+  'sales-by-date':{label:'Ventas por fechas',filters:['date_from','date_to','status'],columns:['fecha','numero_factura','cliente','vendedor','subtotal','descuento','impuesto','total','estado']},
+  'sales-detail':{label:'Maestro-detalle de ventas',filters:['date_from','date_to','status','product','seller'],columns:['numero_factura','fecha','cliente','vendedor','codigo_producto','producto','cantidad','precio_unitario','descuento','impuesto','subtotal','estado']},
+  'purchases-by-supplier':{label:'Compras por proveedor',filters:['date_from','date_to','supplier','status'],columns:['fecha','numero_compra','numero_documento_proveedor','proveedor','subtotal','descuento','impuesto','total','estado']},
+  'current-inventory':{label:'Inventario actual',filters:['product','status'],columns:['codigo','producto','unidad','existencia','existencia_minima','estado_producto']},
+  'low-stock':{label:'Inventario bajo',filters:['product'],columns:['codigo','producto','existencia','existencia_minima','unidad','estado_stock']},
+  'top-products':{label:'Productos más vendidos',filters:['date_from','date_to','product'],columns:['codigo','producto','cantidad_vendida','importe_neto']},
+  'sales-by-seller':{label:'Ventas por vendedor',filters:['date_from','date_to','seller'],columns:['vendedor','cantidad_ventas','subtotal','descuento','impuesto','total']},
+  'gross-profit':{label:'Utilidad bruta estimada',filters:['date_from','date_to','product','seller'],columns:['codigo_producto','producto','cantidad_vendida','ingreso_neto','costo_historico','utilidad_bruta']},
+}
+const labels={fecha:'Fecha',numero_factura:'Factura',cliente:'Cliente',vendedor:'Vendedor',subtotal:'Subtotal',descuento:'Descuento',impuesto:'Impuesto',total:'Total',estado:'Estado',codigo_producto:'Código',producto:'Producto',cantidad:'Cantidad',precio_unitario:'Precio unitario',numero_compra:'Compra',numero_documento_proveedor:'Documento proveedor',proveedor:'Proveedor',codigo:'Código',unidad:'Unidad',existencia:'Existencia',existencia_minima:'Mínimo',estado_producto:'Estado',estado_stock:'Estado de stock',cantidad_vendida:'Cantidad vendida',importe_neto:'Importe neto',cantidad_ventas:'Ventas',ingreso_neto:'Ingreso neto',costo_historico:'Costo histórico',utilidad_bruta:'Utilidad bruta'}
+const moneyColumns=new Set(['subtotal','descuento','impuesto','total','precio_unitario','importe_neto','ingreso_neto','costo_historico','utilidad_bruta'])
+const filterLabels={date_from:'Desde',date_to:'Hasta',status:'Estado',product:'ID producto',seller:'ID vendedor',supplier:'ID proveedor'}
+export function ReportsPage(){
+  const {hasPermission}=useAuth(),canExport=hasPermission('reportes.exportar')
+  const [type,setType]=useState('sales-by-date'),[filters,setFilters]=useState({page:1,limit:20}),[data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState('')
+  const definition=definitions[type]
+  useEffect(()=>{let active=true;setLoading(true);setError('');reportsApi.get(type,filters).then((response)=>{if(active)setData(response?.data)}).catch((requestError)=>{if(active)setError(requestError.message)}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[type,filters])
+  const changeType=(value)=>{setType(value);setFilters({page:1,limit:20});setData(null)}
+  const changeFilter=(key,value)=>setFilters((current)=>({...current,[key]:value,page:1}))
+  const exportExcel=async()=>{setExporting(true);setExportError('');try{const file=await reportsApi.export(type,filters),url=URL.createObjectURL(file.blob),link=document.createElement('a');link.href=url;link.download=file.filename;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)}catch(requestError){setExportError(requestError.message||'No fue posible exportar el reporte.')}finally{setExporting(false)}}
+  return <div className="page-stack"><PageHeader eyebrow="ANÁLISIS" title="Reportes" description="Consultas operativas validadas y calculadas por el servidor." action={canExport?<button className="button button--secondary" type="button" disabled={exporting} onClick={exportExcel}>{exporting?'Exportando…':'Exportar Excel'}</button>:null}/>
+    <section className="report-controls"><label>Reporte<select className="form-control" value={type} onChange={(event)=>changeType(event.target.value)}>{Object.entries(definitions).map(([value,item])=><option key={value} value={value}>{item.label}</option>)}</select></label>{definition.filters.map((filter)=>filter==='status'?<label key={filter}>{filterLabels[filter]}<select className="form-control" value={filters[filter]??''} onChange={(event)=>changeFilter(filter,event.target.value)}><option value="">Predeterminado</option>{type==='purchases-by-supplier'?<><option value="recibida">Recibida</option><option value="anulada">Anulada</option><option value="borrador">Borrador</option></>:type==='current-inventory'?<><option value="todos">Todos</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option></>:<><option value="completada">Completada</option><option value="anulada">Anulada</option><option value="preparacion">Preparación</option></>}</select></label>:<label key={filter}>{filterLabels[filter]}<input className="form-control" type={filter.startsWith('date_')?'date':'number'} min={filter.startsWith('date_')?undefined:'1'} value={filters[filter]??''} onChange={(event)=>changeFilter(filter,event.target.value)} /></label>)}</section>
+    {error&&<div className="inline-alert inline-alert--warning" role="alert">{error}</div>}{loading?<LoadingState message="Generando reporte…" />:<section className="report-result"><header><h2>{definition.label}</h2><span>{data?.pagination?.total??0} registros</span></header><div className="table-shell"><table className="report-table"><thead><tr>{definition.columns.map((column)=><th key={column}>{labels[column]??column}</th>)}</tr></thead><tbody>{data?.rows?.map((row,index)=><tr key={index}>{definition.columns.map((column)=><td key={column}>{moneyColumns.has(column)?formatMoney(row[column]):row[column]??'—'}</td>)}</tr>)}</tbody></table></div>{!data?.rows?.length&&<p className="chart-empty">No se encontraron registros con estos filtros.</p>}<Pagination pagination={data?.pagination} disabled={loading} onPageChange={(page)=>setFilters((current)=>({...current,page}))} /></section>}
+    <ErrorDialog open={Boolean(exportError)} title="No fue posible exportar" message={exportError} onClose={()=>setExportError('')} />
+  </div>
+}

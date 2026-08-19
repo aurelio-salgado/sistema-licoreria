@@ -29,6 +29,7 @@ export function CashPage() {
   const [mutationError, setMutationError] = useState(null)
   const canOpen = hasPermission('caja.abrir')
   const canClose = hasPermission('caja.cerrar')
+  const canCreateSale = hasPermission('ventas.crear')
 
   const loadCurrent = useCallback(async () => {
     setLoadingCurrent(true); setCurrentError('')
@@ -53,7 +54,16 @@ export function CashPage() {
     catch (requestError) { setMutationError(createActionError(requestError, errorTitle)) }
     finally { setSaving(false) }
   }
-  const openCash = (values) => applyAction(() => cashApi.open(values), 'Caja abierta correctamente.', 'No se pudo abrir la caja')
+  const openCash = async (values) => {
+    setSaving(true); setMutationError(null)
+    try {
+      const response = await cashApi.open(values)
+      await Promise.all([loadCurrent(), loadHistory()])
+      setDialog({ type: 'open-success', cash: response.data.cash })
+    } catch (requestError) {
+      setMutationError(createActionError(requestError, 'No se pudo abrir la caja'))
+    } finally { setSaving(false) }
+  }
   const createMovement = (values) => applyAction(() => cashApi.createMovement(current.id_caja, values), `${values.tipo_movimiento === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado correctamente.`, `No se pudo registrar el ${values.tipo_movimiento}`)
   const closeCash = async (values) => {
     setSaving(true); setMutationError(null)
@@ -78,6 +88,7 @@ export function CashPage() {
       {!historyError && <Pagination pagination={pagination} disabled={loadingHistory} onPageChange={(page) => setFilters((currentFilters) => ({ ...currentFilters, page }))} />}
     </section>
     {dialog?.type === 'open' && <Modal title="Abrir caja" onClose={() => setDialog(null)} busy={saving}><OpenCashForm busy={saving} onCancel={() => setDialog(null)} onSubmit={openCash} /></Modal>}
+    {dialog?.type === 'open-success' && <Modal title="Caja abierta correctamente" onClose={() => setDialog(null)} footer={<div className="cash-open-success-actions">{canCreateSale && <button className="button button--primary" type="button" onClick={() => navigate('/sales')}>Ir a ventas</button>}<button className="button button--secondary" type="button" onClick={() => navigate('/')}>Volver al dashboard</button></div>}><div className="cash-open-success"><span aria-hidden="true">✓</span><div><strong>Tu caja está lista para operar.</strong><p>Monto de apertura: {formatMoney(dialog.cash?.monto_apertura)}</p></div></div></Modal>}
     {dialog?.type === 'movement' && <Modal title={`Registrar ${dialog.movementType}`} onClose={() => setDialog(null)} busy={saving}><CashMovementForm type={dialog.movementType} busy={saving} onCancel={() => setDialog(null)} onSubmit={createMovement} /></Modal>}
     {dialog?.type === 'close' && <Modal title="Cerrar caja" onClose={() => setDialog(null)} busy={saving}><CloseCashForm expected={summary.expected} busy={saving} onCancel={() => setDialog(null)} onSubmit={closeCash} /></Modal>}
     <ErrorDialog open={Boolean(mutationError)} title={mutationError?.title} message={mutationError?.message} onClose={() => setMutationError(null)} />

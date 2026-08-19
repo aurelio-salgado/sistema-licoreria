@@ -38,7 +38,8 @@ VALUES
     ('caja.movimientos', 'Gestionar movimientos de caja', 'caja', 'Registrar y consultar movimientos autorizados de caja.'),
     ('reportes.ver', 'Ver reportes', 'reportes', 'Consultar reportes autorizados.'),
     ('reportes.exportar', 'Exportar reportes', 'reportes', 'Exportar reportes autorizados.'),
-    ('dashboard.ver', 'Ver dashboard', 'dashboard', 'Consultar indicadores y gráficos autorizados.'),
+    ('dashboard.ver', 'Ver dashboard', 'dashboard', 'Consultar indicadores autorizados.'),
+    ('dashboard.graficos', 'Ver gráficos del dashboard', 'dashboard', 'Consultar los gráficos autorizados del dashboard.'),
     ('bitacora.ver', 'Ver bitácora', 'bitacora', 'Consultar la bitácora.'),
     ('respaldos.crear', 'Crear respaldos', 'respaldos', 'Crear respaldos autorizados.'),
     ('respaldos.restaurar', 'Restaurar respaldos', 'respaldos', 'Ejecutar restauraciones autorizadas.'),
@@ -84,7 +85,8 @@ INNER JOIN permisos AS p
         'inventario.ver',
         'ventas.ver',
         'reportes.ver',
-        'dashboard.ver'
+        'dashboard.ver',
+        'dashboard.graficos'
     )
 WHERE r.nombre = 'Consulta';
 

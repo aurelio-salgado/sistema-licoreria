@@ -293,6 +293,17 @@ async function discountPolicy(c) {
   );
   return rows[0] || null;
 }
+async function operationalStatus(c, userId) {
+  const [configuration] = await c.execute(
+    'SELECT valor FROM configuracion WHERE clave=? LIMIT 1',
+    ['control_caja_activo'],
+  );
+  const [cashboxes] = await c.execute(
+    "SELECT id_caja FROM cajas WHERE id_usuario=? AND estado='abierta' ORDER BY id_caja",
+    [userId],
+  );
+  return { configuration: configuration[0] || null, cashboxes };
+}
 async function paymentMethodsForUpdate(c, ids) {
   if (!ids.length) return [];
   const placeholders = ids.map(() => '?').join(',');
@@ -470,6 +481,7 @@ module.exports = {
   listItems,
   listPayments,
   openCashboxesForUpdate,
+  operationalStatus,
   paymentMethodsForUpdate,
   productsForUpdate,
   update,

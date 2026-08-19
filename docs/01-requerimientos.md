@@ -582,7 +582,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-049 — Indicadores operativos
 
-**Descripción:** El dashboard mostrará, según los permisos, ventas del día, número de ventas, productos con inventario bajo y ventas recientes.
+**Descripción:** `dashboard.ver` permite acceder a una página inicial sin métricas, con bienvenida y accesos rápidos autorizados. Los usuarios que además posean `dashboard.graficos` verán el total monetario y número de ventas completadas del día actual, la cantidad de productos activos con inventario bajo y las cinco ventas completadas más recientes. Las ventas anuladas no cuentan.
 
 **Actor principal:** Administrador, Vendedor o Consulta.
 
@@ -592,7 +592,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-050 — Gráficos del dashboard
 
-**Descripción:** El dashboard presentará al menos tres gráficos: ventas por período, productos más vendidos y ventas por categoría.
+**Descripción:** El dashboard presentará exactamente tres gráficos: ventas por período, productos más vendidos y ventas por categoría. Usará por defecto los últimos 30 días y permitirá Hoy, 7 días, 30 días o un rango personalizado. Los gráficos requieren `dashboard.graficos` y excluyen ventas anuladas.
 
 **Actor principal:** Administrador o Consulta.
 
@@ -604,7 +604,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-051 — Reportes operativos mínimos
 
-**Descripción:** El sistema ofrecerá al menos ocho reportes: ventas por fechas, maestro-detalle de ventas, compras por proveedor, inventario actual, inventario bajo, productos más vendidos, ventas por vendedor y utilidad bruta estimada.
+**Descripción:** El sistema ofrecerá los ocho reportes cerrados `sales-by-date`, `sales-detail`, `purchases-by-supplier`, `current-inventory`, `low-stock`, `top-products`, `sales-by-seller` y `gross-profit`, con las columnas y filtros definidos en el contrato REST.
 
 **Actor principal:** Administrador o Consulta según permiso.
 
@@ -921,4 +921,4 @@ La documentación relacionada deberá reflejar el comportamiento implementado y 
 
 ## Decisiones pendientes de confirmación futura
 
-Sin ampliar el alcance aprobado, antes del diseño detallado deberán confirmarse: la tasa o las tasas de impuesto iniciales y sus reglas de redondeo; los límites y tipos de descuento; la matriz exacta de permisos por rol; los datos obligatorios de clientes y proveedores; el formato, serie y numeración inicial del comprobante; el tratamiento de caja para pagos no efectivos; los formatos y columnas definitivos de reportes; la política de retención, ubicación, frecuencia y cifrado de respaldos; los objetivos cuantitativos de disponibilidad y recuperación; y si el comprobante interno deberá adaptarse posteriormente a requisitos fiscales.
+Sin ampliar el alcance aprobado, antes del diseño detallado deberán confirmarse: la tasa o las tasas de impuesto iniciales y sus reglas de redondeo; los límites y tipos de descuento; la matriz exacta de permisos por rol; los datos obligatorios de clientes y proveedores; el formato, serie y numeración inicial del comprobante; el tratamiento de caja para pagos no efectivos; la política de retención, ubicación, frecuencia y cifrado de respaldos; los objetivos cuantitativos de disponibilidad y recuperación; y si el comprobante interno deberá adaptarse posteriormente a requisitos fiscales.

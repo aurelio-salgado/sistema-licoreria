@@ -645,6 +645,8 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 **Validación:** El backend filtrará la información y rechazará consultas de datos no autorizados.
 
+`dashboard.ver` permite acceder a la página inicial básica sin información analítica. Tanto los indicadores como los tres gráficos requieren `dashboard.graficos`; esta autorización se determina por permisos efectivos y no por nombres de roles. Los accesos rápidos de la experiencia básica se filtran mediante el permiso propio de cada módulo.
+
 ### RN-DAS-002 — Período explícito de indicadores
 
 **Descripción:** Cada indicador y gráfico deberá señalar claramente el período utilizado y calcularse sobre operaciones confirmadas, excluyendo anuladas por defecto.
@@ -847,7 +849,7 @@ Antes del diseño detallado o de las pruebas definitivas deberán aprobarse:
 7. El formato, la serie, la numeración inicial y la presentación del comprobante interno.
 8. El tratamiento detallado en caja de anulaciones y pagos no efectivos.
 9. Los métodos que exigirán referencia y el formato válido de cada referencia.
-10. Los formatos, columnas y filtros definitivos de los reportes y exportaciones.
+10. La presentación avanzada que pudiera añadirse posteriormente a los formatos de reportes ya aprobados.
 11. La política de ubicación, frecuencia, retención, cifrado y validación de respaldos.
 12. El mecanismo exacto para impedir operaciones incompatibles durante una restauración.
 13. Los objetivos cuantitativos de disponibilidad y recuperación.

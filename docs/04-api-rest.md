@@ -381,6 +381,7 @@ Solo aplica a `recibida`. Exige existencia suficiente para restar todas las cant
 | --- | --- | --- | --- |
 | GET | `/sales` | `ventas.ver` | Lista ventas. |
 | GET | `/sales/payment-methods` | `ventas.crear` | Lista métodos de pago activos disponibles para confirmar. |
+| GET | `/sales/operational-status` | `ventas.crear` | Informa si el control de caja está activo y si el usuario autenticado posee una caja abierta. |
 | GET | `/sales/:id` | `ventas.ver` | Devuelve encabezado, líneas y pagos. |
 | POST | `/sales` | `ventas.crear` | Crea una venta en preparación. |
 | PUT | `/sales/:id` | `ventas.crear` | Reemplaza encabezado en preparación. |
@@ -396,6 +397,14 @@ Estados: `preparacion`, `completada`, `anulada`. Filtros: `page`, `limit`, `stat
 `id_metodo_pago`, con `id_metodo_pago`, `nombre`, `requiere_referencia`,
 `es_efectivo` y `estado`. Solo devuelve registros activos y sirve para construir
 la confirmación; el backend vuelve a validar cada método dentro de la transacción.
+
+`GET /sales/operational-status` responde siempre `200` para un estado operativo
+válido con `{ "control_caja_activo": true, "caja_abierta": false }`. Consulta
+únicamente la clave `control_caja_activo` y las cajas abiertas del usuario
+autenticado; no expone identificadores, montos ni otras configuraciones. Sirve para
+anticipar el flujo en la interfaz y no sustituye la validación autoritativa de
+`POST /sales/:id/confirm`, que continúa rechazando con `409` cuando el control está
+activo y no existe exactamente una caja abierta para el vendedor.
 
 `GET /sales/:id` siempre incluye `items` y `payments`. Cuando el estado es
 `preparacion`, incluye además `discount_policy: { "max_percent": "10.00" }`,
@@ -573,6 +582,26 @@ No se permiten campos adicionales. Claves editables y tipos:
 
 `siguiente_numero_comprobante` es visible pero de solo lectura y responde `409` al intentar modificarlo. `descuento_maximo` es editable con `configuracion.editar`, se audita como los demás cambios críticos y solo limita descuentos concedidos al cliente en ventas. Una clave fuera de las siete visibles responde `404`. Respuesta correcta: `{ "setting": { "clave": "nombre_negocio", "valor": "Mi licorería" } }` junto con sus demás metadatos.
 
-## 18. Alcance implementado
+## 18. Dashboard y reportes
 
-La API montada contiene 76 combinaciones método/path en los 17 módulos anteriores. Actualmente no existen routers de reportes, dashboard, respaldos ni restauraciones, aunque el seed reserve permisos para evoluciones futuras. No deben asumirse endpoints para esos módulos hasta que exista implementación real.
+- `GET /api/v1/dashboard` requiere `dashboard.graficos` y devuelve `sales_total`, `sales_count`, `low_stock_count` y `recent_sales` para el día actual. `dashboard.ver` solo habilita la página inicial básica del frontend y no permite consultar estas métricas.
+- `GET /api/v1/dashboard/charts?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&seller=ID` requiere `dashboard.graficos`. Sin fechas usa los últimos 30 días. `seller` es opcional y filtra por el identificador del vendedor. Devuelve `sales_by_period`, `top_products`, `sales_by_category` y el catálogo `sellers`; solo incluye ventas completadas.
+- `GET /api/v1/reports/:type` requiere `reportes.ver`. `type` admite exclusivamente `sales-by-date`, `sales-detail`, `purchases-by-supplier`, `current-inventory`, `low-stock`, `top-products`, `sales-by-seller` y `gross-profit`.
+- `GET /api/v1/reports/:type/export` requiere simultáneamente `reportes.ver` y `reportes.exportar`. Devuelve un archivo XLSX real con las mismas validaciones, filtros, consulta y columnas del reporte JSON. La exportación ignora `page` y `limit`, incluye todo el conjunto filtrado hasta un máximo de 10 000 filas y responde `413` si se supera ese límite.
+
+Los reportes JSON usan `page` (1), `limit` (20, máximo 100) y únicamente los filtros aprobados para cada tipo: `date_from`, `date_to`, `status`, `product`, `seller` o `supplier` según corresponda. Ventas usa `completada` y compras `recibida` como estado predeterminado. `gross-profit` calcula ingreso neto sin impuesto y resta el costo unitario histórico multiplicado por cantidad.
+
+| Tipo | Filtros | Columnas |
+| --- | --- | --- |
+| `sales-by-date` | `date_from`, `date_to`, `status` | `fecha`, `numero_factura`, `cliente`, `vendedor`, `subtotal`, `descuento`, `impuesto`, `total`, `estado` |
+| `sales-detail` | `date_from`, `date_to`, `status`, `product`, `seller` | `numero_factura`, `fecha`, `cliente`, `vendedor`, `codigo_producto`, `producto`, `cantidad`, `precio_unitario`, `descuento`, `impuesto`, `subtotal`, `estado` |
+| `purchases-by-supplier` | `date_from`, `date_to`, `supplier`, `status` | `fecha`, `numero_compra`, `numero_documento_proveedor`, `proveedor`, `subtotal`, `descuento`, `impuesto`, `total`, `estado` |
+| `current-inventory` | `product`, `status` | `codigo`, `producto`, `unidad`, `existencia`, `existencia_minima`, `estado_producto` |
+| `low-stock` | `product` | `codigo`, `producto`, `existencia`, `existencia_minima`, `unidad`, `estado_stock` |
+| `top-products` | `date_from`, `date_to`, `product` | `codigo`, `producto`, `cantidad_vendida`, `importe_neto` |
+| `sales-by-seller` | `date_from`, `date_to`, `seller` | `vendedor`, `cantidad_ventas`, `subtotal`, `descuento`, `impuesto`, `total` |
+| `gross-profit` | `date_from`, `date_to`, `product`, `seller` | `codigo_producto`, `producto`, `cantidad_vendida`, `ingreso_neto`, `costo_historico`, `utilidad_bruta` |
+
+## 19. Alcance implementado
+
+La API montada contiene 81 combinaciones método/path. Dashboard, consultas JSON y exportación XLSX de reportes están implementados; respaldos y restauraciones permanecen pendientes. No deben asumirse otros endpoints hasta que exista implementación real.

@@ -10,6 +10,11 @@ router.get(
   requirePermission('ventas.crear'),
   controller.listPaymentMethods,
 );
+router.get(
+  '/operational-status',
+  requirePermission('ventas.crear'),
+  controller.getOperationalStatus,
+);
 router.get('/:id', requirePermission('ventas.ver'), controller.getSale);
 router.post('/', requirePermission('ventas.crear'), controller.createSale);
 router.post(

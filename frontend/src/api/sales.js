@@ -14,6 +14,7 @@ export const salesApi = {
   list: (filters) => api.get(`/sales?${buildQuery(filters)}`),
   getById: (id) => api.get(`/sales/${id}`),
   getPaymentMethods: () => api.get('/sales/payment-methods'),
+  getOperationalStatus: () => api.get('/sales/operational-status'),
   create: (values) => api.post('/sales', values),
   update: (id, values) => api.put(`/sales/${id}`, values),
   addItem: (id, values) => api.post(`/sales/${id}/items`, values),

@@ -57,6 +57,16 @@ function money(value) {
   const s = value.toString().padStart(3, '0');
   return `${s.slice(0, -2)}.${s.slice(-2)}`;
 }
+async function getOperationalStatus(userId) {
+  const { configuration, cashboxes } = await repo.operationalStatus(pool, userId);
+  const value = configuration?.valor;
+  if (!['true', 'false'].includes(value))
+    throw error(500, 'La configuración de caja no es válida');
+  return {
+    control_caja_activo: value === 'true',
+    caja_abierta: cashboxes.length === 1,
+  };
+}
 function decimalUnits(value, scale, field) {
   const text = String(value);
   const match = text.match(new RegExp(`^(\\d+)(?:\\.(\\d{1,${scale}}))?$`));
@@ -751,6 +761,7 @@ module.exports = {
   confirmSale,
   createSale,
   getSale,
+  getOperationalStatus,
   listPaymentMethods,
   listSales,
   removeItem,

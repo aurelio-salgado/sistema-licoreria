@@ -1,0 +1,9 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { getQuickAccess, shouldLoadDashboardAnalytics } from './dashboardAccess.js'
+test('dashboard.ver sin gráficos selecciona experiencia básica',()=>{const permissions=new Set(['dashboard.ver','ventas.crear']);const allowed=(code)=>permissions.has(code);assert.equal(shouldLoadDashboardAnalytics(allowed),false);assert.deepEqual(getQuickAccess(allowed).map((item)=>item.label),['Nueva venta'])})
+test('dashboard.graficos selecciona experiencia analítica',()=>{const allowed=(code)=>code==='dashboard.graficos';assert.equal(shouldLoadDashboardAnalytics(allowed),true)})
+test('accesos rápidos dependen de permisos y nunca superan cinco',()=>{const accesses=getQuickAccess(()=>true);assert.equal(accesses.length,5);assert.equal(accesses.every((item)=>item.permission&&item.path),true)})
+test('control activo sin caja reserva la apertura a la tarjeta operativa',()=>{const permissions=new Set(['ventas.crear','caja.abrir','caja.movimientos','inventario.ver']);const accesses=getQuickAccess((code)=>permissions.has(code),{control_caja_activo:true,caja_abierta:false});assert.deepEqual(accesses.map((item)=>item.label),['Inventario'])})
+test('control activo sin caja no ofrece apertura sin caja.abrir',()=>{const permissions=new Set(['ventas.crear','inventario.ver']);const accesses=getQuickAccess((code)=>permissions.has(code),{control_caja_activo:true,caja_abierta:false});assert.deepEqual(accesses.map((item)=>item.label),['Inventario'])})
+test('caja abierta o control desactivado conserva Nueva venta',()=>{const allowed=(code)=>code==='ventas.crear';assert.equal(getQuickAccess(allowed,{control_caja_activo:true,caja_abierta:true})[0].label,'Nueva venta');assert.equal(getQuickAccess(allowed,{control_caja_activo:false,caja_abierta:false})[0].label,'Nueva venta')})

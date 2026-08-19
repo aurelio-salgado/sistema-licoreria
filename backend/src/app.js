@@ -11,10 +11,12 @@ const brandRoutes = require('./modules/brands/brand.routes');
 const cashRoutes = require('./modules/cash/cash.routes');
 const categoryRoutes = require('./modules/categories/category.routes');
 const clientRoutes = require('./modules/clients/client.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const healthRoutes = require('./modules/health/health.routes');
 const inventoryRoutes = require('./modules/inventory/inventory.routes');
 const productRoutes = require('./modules/products/product.routes');
 const purchaseRoutes = require('./modules/purchases/purchase.routes');
+const reportRoutes = require('./modules/reports/report.routes');
 const saleRoutes = require('./modules/sales/sale.routes');
 const settingRoutes = require('./modules/settings/setting.routes');
 const supplierRoutes = require('./modules/suppliers/supplier.routes');
@@ -27,6 +29,7 @@ const app = express();
 
 const corsOptions = {
   origin: env.corsOrigin,
+  exposedHeaders: ['Content-Disposition'],
 };
 
 app.use(helmet());
@@ -42,10 +45,12 @@ app.use('/api/v1/brands', brandRoutes);
 app.use('/api/v1/cash', cashRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/clients', clientRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/purchases', purchaseRoutes);
+app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/sales', saleRoutes);
 app.use('/api/v1/settings', settingRoutes);
 app.use('/api/v1/suppliers', supplierRoutes);

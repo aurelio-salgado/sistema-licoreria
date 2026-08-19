@@ -38,7 +38,10 @@ export function SalesPage() {
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [mutationError, setMutationError] = useState(null)
+  const [checkingOperation, setCheckingOperation] = useState(false)
+  const [cashNotice, setCashNotice] = useState(false)
   const canCreate = hasPermission('ventas.crear')
+  const canOpenCash = hasPermission('caja.abrir')
 
   const loadSales = useCallback(async () => {
     setLoading(true); setError('')
@@ -60,9 +63,19 @@ export function SalesPage() {
     catch (requestError) { setMutationError(createActionError(requestError, 'No se pudo crear la venta', 'No fue posible crear la preparación.')) }
     finally { setSaving(false) }
   }
+  const startSale = async () => {
+    setCheckingOperation(true); setMutationError(null)
+    try {
+      const status = (await salesApi.getOperationalStatus())?.data
+      if (status?.control_caja_activo && !status?.caja_abierta) setCashNotice(true)
+      else setCreating(true)
+    } catch (requestError) {
+      setMutationError(createActionError(requestError, 'No se pudo validar la operación', 'No fue posible consultar el estado operativo de caja.'))
+    } finally { setCheckingOperation(false) }
+  }
 
   return <div className="page-stack sales-page">
-    <PageHeader eyebrow="VENTAS" title="Ventas" description="Prepara, cobra y consulta las ventas conservando su trazabilidad." action={canCreate ? <button className="button button--primary" type="button" onClick={() => setCreating(true)}>Nueva venta</button> : null} />
+    <PageHeader eyebrow="VENTAS" title="Ventas" description="Prepara, cobra y consulta las ventas conservando su trazabilidad." action={canCreate ? <button className="button button--primary" type="button" disabled={checkingOperation} onClick={startSale}>{checkingOperation ? 'Validando…' : 'Nueva venta'}</button> : null} />
     {clientError && <div className="inline-alert inline-alert--error" role="alert">{clientError} <button className="link-button" type="button" onClick={loadClientCatalog}>Reintentar</button></div>}
     <section className="catalog-panel" aria-label="Listado de ventas">
       <div className="sale-filters">
@@ -76,6 +89,7 @@ export function SalesPage() {
       {!error && <Pagination pagination={pagination} disabled={loading} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} />}
     </section>
     {creating && <Modal title="Nueva venta" onClose={() => { setCreating(false); setMutationError(null) }} busy={saving} wide><SaleHeaderForm clients={clients} busy={saving} onCancel={() => { setCreating(false); setMutationError(null) }} onSubmit={createSale} /></Modal>}
+    {cashNotice && <Modal title="No tienes una caja abierta" onClose={() => setCashNotice(false)} footer={<><button className="button button--secondary" type="button" onClick={() => setCashNotice(false)}>Cancelar</button>{canOpenCash && <button className="button button--primary" type="button" onClick={() => navigate('/cash')}>Ir a Caja</button>}</>}><div className="operational-notice"><span aria-hidden="true">!</span><p>{canOpenCash ? 'Debes abrir una caja antes de comenzar una venta.' : 'No tienes una caja abierta. Solicita a un usuario autorizado que habilite tu operación de caja.'}</p></div></Modal>}
     <ErrorDialog open={Boolean(mutationError)} title={mutationError?.title} message={mutationError?.message} onClose={() => setMutationError(null)} />
   </div>
 }
