@@ -850,7 +850,7 @@ Antes del diseño detallado o de las pruebas definitivas deberán aprobarse:
 8. El tratamiento detallado en caja de anulaciones y pagos no efectivos.
 9. Los métodos que exigirán referencia y el formato válido de cada referencia.
 10. La presentación avanzada que pudiera añadirse posteriormente a los formatos de reportes ya aprobados.
-11. La política de ubicación, frecuencia, retención, cifrado y validación de respaldos.
+11. Los JWT incluyen el `jwt_session_epoch` interno vigente; al restaurar se rota después del import y antes de abandonar mantenimiento.
 12. El mecanismo exacto para impedir operaciones incompatibles durante una restauración.
 13. Los objetivos cuantitativos de disponibilidad y recuperación.
 14. La eventual adaptación del comprobante interno a requisitos fiscales, si se aprueba ese alcance en el futuro.

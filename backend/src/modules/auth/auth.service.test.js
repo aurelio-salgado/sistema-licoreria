@@ -10,11 +10,14 @@ const pool = require('../../config/database');
 const repository = require('./auth.repository');
 const service = require('./auth.service');
 const controller = require('./auth.controller');
+const sessionEpoch = require('../../services/sessionEpoch');
 
 const originalCompare = bcrypt.compare;
 const originalGetConnection = pool.getConnection;
 const originalRepository = { ...repository };
 const originalServiceLogin = service.login;
+const originalSessionEpochGet = sessionEpoch.get;
+const epoch = '45e64b2a-bb2d-4d5f-9f4a-d01486838761';
 
 function user(overrides = {}) {
   return {
@@ -43,6 +46,7 @@ function scenario(options = {}) {
   };
   pool.getConnection = async () => connection;
   bcrypt.compare = async () => options.passwordMatches ?? true;
+  sessionEpoch.get = async () => options.epoch || epoch;
   Object.assign(repository, {
     findUserByUsername: async () =>
       Object.hasOwn(options, 'foundUser') ? options.foundUser : user(),
@@ -72,6 +76,7 @@ test('login válido genera JWT permitido y respuesta sin credenciales', async ()
   assert.equal(payload.sub, '4');
   assert.equal(payload.nombre_usuario, 'usuario.prueba');
   assert.deepEqual(payload.roles, ['Administrador']);
+  assert.equal(payload.session_epoch, epoch);
   assert.equal(Object.hasOwn(payload, 'password'), false);
   assert.equal(Object.hasOwn(payload, 'password_hash'), false);
   assert.equal(Object.hasOwn(result.user, 'password'), false);
@@ -166,4 +171,5 @@ test.after(() => {
   pool.getConnection = originalGetConnection;
   Object.assign(repository, originalRepository);
   service.login = originalServiceLogin;
+  sessionEpoch.get = originalSessionEpochGet;
 });

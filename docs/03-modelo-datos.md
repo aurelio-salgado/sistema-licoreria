@@ -641,6 +641,11 @@ El modelo actual no conserva `costo_promedio_anterior` ni un kardex valorizado. 
 - **Reglas de integridad:** validar tipo y rango; `descuento_maximo` es un porcentaje entre 0 y 100 que limita exclusivamente el descuento monetario concedido por línea de venta; incluir datos del negocio, impuesto, numeración, seguridad y control de caja; cambios solo prospectivos.
 - **Política de eliminación o desactivación:** no eliminar claves requeridas; cambios críticos se auditan y la estrategia de historial de valores queda pendiente.
 
+`jwt_session_epoch` es una clave interna de tipo UUID: no forma parte de las claves
+administrativas visibles o editables. Se inicializa con `crypto.randomUUID()` y se
+rota en la base restaurada para invalidar todos los JWT anteriores. Su valor no se
+expone ni se incluye completo en bitácora.
+
 ### 7.23 `respaldos`
 
 **Propósito:** Registrar metadatos y resultados de respaldos y restauraciones sin almacenar el archivo binario.
@@ -659,14 +664,24 @@ El modelo actual no conserva `costo_promedio_anterior` ni un kardex valorizado. 
 | `id_usuario` | BIGINT UNSIGNED | No | FK | Usuario con permiso | Responsable. |
 | `mensaje_resultado` | TEXT | Sí | — | Sin rutas o secretos expuestos al cliente | Resultado técnico saneado. |
 | `fecha_operacion` | DATETIME | No | IDX | — | Fecha del proceso. |
+| `fecha_finalizacion` | DATETIME | Sí | — | Posterior al inicio | Finalización del proceso. |
+| `checksum_sha256` | CHAR(64) | Sí | — | Hexadecimal minúsculo | Integridad del archivo SQL. |
+| `formato_version` | VARCHAR(30) | Sí | — | Formato controlado | Compatibilidad del respaldo. |
+| `archivo_disponible` | BOOLEAN | No | IDX | Por defecto falso | Disponibilidad física para descarga/restauración. |
+| `id_respaldo_origen` | BIGINT UNSIGNED | Sí | FK | Operación de restauración | Respaldo seleccionado. |
+| `id_respaldo_preventivo` | BIGINT UNSIGNED | Sí | FK | Operación de restauración | Respaldo previo al import. |
 | `creado_en` | DATETIME | No | — | — | Registro. |
 
 - **Clave primaria:** `id_respaldo`.
-- **Claves foráneas:** `id_usuario` → `usuarios`.
+- **Claves foráneas:** `id_usuario` → `usuarios`; `id_respaldo_origen` e `id_respaldo_preventivo` → `respaldos`.
 - **Restricciones únicas:** se recomienda identificar de manera única cada archivo gestionado mediante nombre y fecha o un identificador seguro.
 - **Índices recomendados:** `fecha_operacion`, `estado`, `operacion`, `id_usuario, fecha_operacion`, `nombre_archivo`.
 - **Reglas de integridad:** restaurar solo archivos validados; crear respaldo preventivo; registrar éxito o fallo; nunca enviar `ruta_segura` al frontend.
 - **Política de eliminación o desactivación:** conservar metadatos según política de retención; eliminar archivos solo mediante procedimiento autorizado y sin borrar evidencia requerida.
+  La primera versión conserva hasta diez respaldos manuales exitosos, configurable
+  entre 1 y 100. Al retirar el archivo más antiguo establece
+  `archivo_disponible = FALSE` y conserva tamaño, checksum y metadata. Los
+  preventivos no participan en esta rotación.
 
 ## 8. Relaciones y cardinalidades
 

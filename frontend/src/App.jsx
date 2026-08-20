@@ -20,6 +20,7 @@ import { UsersPage } from './pages/UsersPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AuditPage } from './pages/AuditPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { BackupsPage } from './pages/BackupsPage'
 import { PermissionRoute } from './routes/PermissionRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { PublicOnlyRoute } from './routes/PublicOnlyRoute'
@@ -67,6 +68,7 @@ export default function App() {
               <Route path="settings" element={<PermissionRoute permission="configuracion.ver"><SettingsPage /></PermissionRoute>} />
               <Route path="audit" element={<PermissionRoute permission="bitacora.ver"><AuditPage /></PermissionRoute>} />
               <Route path="reports" element={<PermissionRoute permission="reportes.ver"><ReportsPage /></PermissionRoute>} />
+              <Route path="backups" element={<PermissionRoute permission="respaldos.ver"><BackupsPage /></PermissionRoute>} />
             </Route>
           </Route>
 

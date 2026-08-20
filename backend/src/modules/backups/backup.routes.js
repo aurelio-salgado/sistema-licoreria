@@ -1,0 +1,11 @@
+const router=require('express').Router();
+const authenticate=require('../../middlewares/authenticate');
+const requirePermission=require('../../middlewares/requirePermission');
+const controller=require('./backup.controller');
+router.use(authenticate);
+router.get('/',requirePermission('respaldos.ver'),controller.list);
+router.post('/',requirePermission('respaldos.crear'),controller.create);
+router.get('/:id/download',requirePermission('respaldos.ver'),controller.download);
+router.post('/:id/restore',requirePermission('respaldos.restaurar'),controller.restore);
+router.get('/:id',requirePermission('respaldos.ver'),controller.get);
+module.exports=router;

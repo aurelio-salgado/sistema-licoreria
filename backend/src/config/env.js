@@ -11,6 +11,13 @@ function parsePositiveInteger(value, fallback) {
     : fallback;
 }
 
+function parseBoundedInteger(value, fallback, minimum, maximum) {
+  const parsedValue = parsePositiveInteger(value, fallback);
+  return parsedValue >= minimum && parsedValue <= maximum
+    ? parsedValue
+    : fallback;
+}
+
 function getJwtConfig() {
   const secret = process.env.JWT_SECRET?.trim();
   const expiresIn = process.env.JWT_EXPIRES_IN?.trim();
@@ -37,6 +44,22 @@ const env = Object.freeze({
     password: process.env.DB_PASSWORD || '',
     name: process.env.DB_NAME || '',
     connectionLimit: parsePositiveInteger(process.env.DB_CONNECTION_LIMIT, 10),
+  }),
+  backups: Object.freeze({
+    dumpExecutable: process.env.DB_DUMP_EXECUTABLE?.trim() || 'mysqldump',
+    restoreExecutable: process.env.DB_RESTORE_EXECUTABLE?.trim() || 'mysql',
+    storagePath: path.resolve(
+      __dirname,
+      '../..',
+      process.env.BACKUP_STORAGE_PATH?.trim() || 'storage/backups',
+    ),
+    maxManual: parseBoundedInteger(process.env.BACKUP_MAX_MANUAL, 10, 1, 100),
+    processTimeoutMs: parseBoundedInteger(
+      process.env.BACKUP_PROCESS_TIMEOUT_MS,
+      300000,
+      1000,
+      3600000,
+    ),
   }),
   getJwtConfig,
 });

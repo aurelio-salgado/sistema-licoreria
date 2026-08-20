@@ -622,6 +622,12 @@ CREATE TABLE IF NOT EXISTS respaldos (
     id_usuario BIGINT UNSIGNED NOT NULL,
     mensaje_resultado TEXT NULL,
     fecha_operacion DATETIME NOT NULL,
+    fecha_finalizacion DATETIME NULL,
+    checksum_sha256 CHAR(64) NULL,
+    formato_version VARCHAR(30) NULL,
+    archivo_disponible BOOLEAN NOT NULL DEFAULT FALSE,
+    id_respaldo_origen BIGINT UNSIGNED NULL,
+    id_respaldo_preventivo BIGINT UNSIGNED NULL,
     creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_respaldos PRIMARY KEY (id_respaldo),
     CONSTRAINT chk_respaldos_tamano_bytes
@@ -630,15 +636,27 @@ CREATE TABLE IF NOT EXISTS respaldos (
         CHECK (operacion IN ('respaldo', 'restauracion')),
     CONSTRAINT chk_respaldos_estado
         CHECK (estado IN ('en_proceso', 'exitoso', 'fallido')),
+    CONSTRAINT chk_respaldos_checksum
+        CHECK (checksum_sha256 IS NULL OR checksum_sha256 REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT chk_respaldos_archivo_disponible
+        CHECK (archivo_disponible IN (FALSE, TRUE)),
     CONSTRAINT fk_respaldos_usuario
         FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_respaldos_origen
+        FOREIGN KEY (id_respaldo_origen) REFERENCES respaldos (id_respaldo)
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
+    CONSTRAINT fk_respaldos_preventivo
+        FOREIGN KEY (id_respaldo_preventivo) REFERENCES respaldos (id_respaldo)
         ON UPDATE RESTRICT ON DELETE RESTRICT,
     INDEX idx_respaldos_nombre_archivo (nombre_archivo),
     INDEX idx_respaldos_tipo (tipo),
     INDEX idx_respaldos_operacion (operacion),
     INDEX idx_respaldos_estado (estado),
     INDEX idx_respaldos_fecha_operacion (fecha_operacion),
-    INDEX idx_respaldos_usuario_fecha (id_usuario, fecha_operacion)
+    INDEX idx_respaldos_usuario_fecha (id_usuario, fecha_operacion),
+    INDEX idx_respaldos_retencion
+        (tipo, operacion, estado, archivo_disponible, fecha_finalizacion)
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;

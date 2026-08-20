@@ -1,5 +1,12 @@
 # Estado de implementación del frontend
 
+## Respaldos
+
+La ruta `/backups`, protegida por `respaldos.ver`, muestra historial y filtros.
+`respaldos.crear` habilita creación manual, `respaldos.ver` descarga y
+`respaldos.restaurar` el modal que exige `RESTAURAR`. Al finalizar, la rotación del
+epoch provoca el flujo global existente de `401` y nuevo inicio de sesión.
+
 ## Catálogos de productos
 
 El frontend dispone de pantallas funcionales y protegidas por `productos.ver` para:

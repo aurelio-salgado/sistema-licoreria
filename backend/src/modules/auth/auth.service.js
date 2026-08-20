@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../../config/database');
 const env = require('../../config/env');
 const authRepository = require('./auth.repository');
+const sessionEpoch = require('../../services/sessionEpoch');
 
 const MAX_FAILED_ATTEMPTS = 5;
 const BLOCK_DURATION_MINUTES = 15;
@@ -79,12 +80,14 @@ async function login({ username, password, ipAddress }) {
       connection,
       user.id_usuario,
     );
+    const currentSessionEpoch = await sessionEpoch.get(connection);
 
     const token = jwt.sign(
       {
         sub: String(user.id_usuario),
         nombre_usuario: user.nombre_usuario,
         roles,
+        session_epoch: currentSessionEpoch,
       },
       jwtConfig.secret,
       { expiresIn: jwtConfig.expiresIn },

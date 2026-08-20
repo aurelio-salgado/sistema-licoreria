@@ -45,21 +45,26 @@ export function Pagination({ pagination, onPageChange, disabled }) {
   )
 }
 
-export function Modal({ title, children, onClose, footer, busy = false, wide = false, role = 'dialog', descriptionId }) {
+export function Modal({ title, children, onClose, footer, busy = false, wide = false, role = 'dialog', descriptionId, initialFocusRef }) {
   const titleId = useId()
   const backdropRef = useRef(null)
   const closeButtonRef = useRef(null)
+  const busyRef = useRef(busy)
+  const onCloseRef = useRef(onClose)
+  busyRef.current = busy
+  onCloseRef.current = onClose
 
   useEffect(() => {
-    closeButtonRef.current?.focus()
+    const initialFocusTarget = initialFocusRef?.current || closeButtonRef.current
+    initialFocusTarget?.focus()
     const handleKeyDown = (event) => {
       const openBackdrops = document.querySelectorAll('.modal-backdrop')
       const isTopmostModal = openBackdrops[openBackdrops.length - 1] === backdropRef.current
-      if (event.key === 'Escape' && !busy && isTopmostModal) onClose()
+      if (event.key === 'Escape' && !busyRef.current && isTopmostModal) onCloseRef.current()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [busy, onClose])
+  }, [initialFocusRef])
 
   return (
     <div ref={backdropRef} className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>

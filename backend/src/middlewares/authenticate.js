@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const pool = require('../config/database');
 const authRepository = require('../modules/auth/auth.repository');
+const sessionEpoch = require('../services/sessionEpoch');
 
 function rejectUnauthorized(res) {
   return res.status(401).json({
@@ -37,6 +38,7 @@ async function authenticate(req, res, next) {
     const userId = Number(payload?.sub);
     const username = payload?.nombre_usuario;
     const roles = payload?.roles;
+    const tokenSessionEpoch = payload?.session_epoch;
 
     if (
       typeof payload !== 'object' ||
@@ -46,10 +48,14 @@ async function authenticate(req, res, next) {
       typeof username !== 'string' ||
       !username.trim() ||
       !Array.isArray(roles) ||
-      !roles.every((role) => typeof role === 'string' && role.trim())
+      !roles.every((role) => typeof role === 'string' && role.trim()) ||
+      typeof tokenSessionEpoch !== 'string'
     ) {
       return rejectUnauthorized(res);
     }
+
+    const currentSessionEpoch = await sessionEpoch.get(pool);
+    if (tokenSessionEpoch !== currentSessionEpoch) return rejectUnauthorized(res);
 
     const user = await authRepository.findSessionUserById(pool, userId);
 

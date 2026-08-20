@@ -921,4 +921,8 @@ La documentación relacionada deberá reflejar el comportamiento implementado y 
 
 ## Decisiones pendientes de confirmación futura
 
-Sin ampliar el alcance aprobado, antes del diseño detallado deberán confirmarse: la tasa o las tasas de impuesto iniciales y sus reglas de redondeo; los límites y tipos de descuento; la matriz exacta de permisos por rol; los datos obligatorios de clientes y proveedores; el formato, serie y numeración inicial del comprobante; el tratamiento de caja para pagos no efectivos; la política de retención, ubicación, frecuencia y cifrado de respaldos; los objetivos cuantitativos de disponibilidad y recuperación; y si el comprobante interno deberá adaptarse posteriormente a requisitos fiscales.
+Sin ampliar el alcance aprobado, deberán confirmarse los objetivos cuantitativos de
+disponibilidad y recuperación. La versión persistente `jwt_session_epoch` invalida
+todos los JWT después de restaurar. Para la primera versión se aprobaron
+respaldos manuales `.sql`, almacenamiento privado configurable, SHA-256, máximo diez
+manuales exitosos disponibles, preventivo obligatorio y ausencia de cifrado en reposo.

@@ -582,6 +582,9 @@ No se permiten campos adicionales. Claves editables y tipos:
 
 `siguiente_numero_comprobante` es visible pero de solo lectura y responde `409` al intentar modificarlo. `descuento_maximo` es editable con `configuracion.editar`, se audita como los demás cambios críticos y solo limita descuentos concedidos al cliente en ventas. Una clave fuera de las siete visibles responde `404`. Respuesta correcta: `{ "setting": { "clave": "nombre_negocio", "valor": "Mi licorería" } }` junto con sus demás metadatos.
 
+La clave interna `jwt_session_epoch` queda fuera de estas whitelists: no aparece en
+`GET /settings` y `PUT /settings/jwt_session_epoch` responde `404`.
+
 ## 18. Dashboard y reportes
 
 - `GET /api/v1/dashboard` requiere `dashboard.graficos` y devuelve `sales_total`, `sales_count`, `low_stock_count` y `recent_sales` para el día actual. `dashboard.ver` solo habilita la página inicial básica del frontend y no permite consultar estas métricas.
@@ -602,6 +605,29 @@ Los reportes JSON usan `page` (1), `limit` (20, máximo 100) y únicamente los f
 | `sales-by-seller` | `date_from`, `date_to`, `seller` | `vendedor`, `cantidad_ventas`, `subtotal`, `descuento`, `impuesto`, `total` |
 | `gross-profit` | `date_from`, `date_to`, `product`, `seller` | `codigo_producto`, `producto`, `cantidad_vendida`, `ingreso_neto`, `costo_historico`, `utilidad_bruta` |
 
-## 19. Alcance implementado
+## 19. Respaldos
 
-La API montada contiene 81 combinaciones método/path. Dashboard, consultas JSON y exportación XLSX de reportes están implementados; respaldos y restauraciones permanecen pendientes. No deben asumirse otros endpoints hasta que exista implementación real.
+| Método | Endpoint | Permiso | Descripción |
+| --- | --- | --- | --- |
+| GET | `/backups` | `respaldos.ver` | Lista metadata pública paginada. |
+| GET | `/backups/:id` | `respaldos.ver` | Consulta metadata pública. |
+| POST | `/backups` | `respaldos.crear` | Crea un respaldo manual; body `{}`. |
+| GET | `/backups/:id/download` | `respaldos.ver` | Descarga un respaldo íntegro y disponible. |
+| POST | `/backups/:id/restore` | `respaldos.restaurar` | Solicita restauración con `{ "confirmacion": "RESTAURAR" }`. |
+
+El listado admite exclusivamente `page`, `limit`, `tipo`, `operacion`, `estado`,
+`fecha_desde` y `fecha_hasta`. Nunca devuelve rutas, checksum completo, credenciales,
+argumentos ni errores técnicos. Descarga y restauración vuelven a comprobar
+ubicación, archivo regular, tamaño, formato y SHA-256.
+
+La creación usa `.sql.part`, `mysqldump` con `shell:false`, validación y renombrado
+atómico. La restauración crea un preventivo y usa `mysql` mediante stdin. En la
+después del import rota `jwt_session_epoch` antes de registrar éxito y abandonar
+mantenimiento. Un token sin el claim `session_epoch` o con un valor anterior recibe
+el mismo `401 No autorizado`, sin revelar el valor vigente.
+
+## 20. Alcance implementado
+
+La API montada contiene 86 combinaciones método/path. Respaldos manuales, consulta y
+descarga están implementados. La restauración controlada está implementada y rota
+las sesiones globales; las pruebas automáticas sustituyen los procesos externos.

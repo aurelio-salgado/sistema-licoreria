@@ -7,9 +7,12 @@ process.env.JWT_EXPIRES_IN = '1h';
 
 const authRepository = require('../modules/auth/auth.repository');
 const authenticate = require('./authenticate');
+const sessionEpoch = require('../services/sessionEpoch');
 
 const originalRepository = { ...authRepository };
 const secret = process.env.JWT_SECRET;
+const originalEpochGet = sessionEpoch.get;
+let currentEpoch = '45e64b2a-bb2d-4d5f-9f4a-d01486838761';
 
 function request(authorization) {
   return {
@@ -41,6 +44,7 @@ function token(payload = {}, options = {}) {
       sub: '7',
       nombre_usuario: 'nombre-en-token',
       roles: ['Rol antiguo'],
+      session_epoch: currentEpoch,
       ...payload,
     },
     secret,
@@ -69,6 +73,7 @@ async function execute(authorization, user = sessionUser()) {
     return user;
   };
   authRepository.findRolesByUserId = async () => ['Administrador'];
+  sessionEpoch.get = async () => currentEpoch;
   await authenticate(req, res, (error) => {
     nextCalls += 1;
     nextError = error;
@@ -164,6 +169,21 @@ test('authenticate toma id de sub y no confía en nombre ni roles del JWT', asyn
   assert.deepEqual(result.req.user.roles, ['Administrador']);
 });
 
+test('authenticate rechaza token sin epoch o con epoch anterior', async () => {
+  const withoutEpoch = token({ session_epoch: undefined });
+  assert.equal((await execute(`Bearer ${withoutEpoch}`)).res.statusCode, 401);
+  const previous = token({ session_epoch: '13ca15f4-1d11-474a-877d-4cfef66964fe' });
+  assert.equal((await execute(`Bearer ${previous}`)).res.statusCode, 401);
+});
+
+test('rotar epoch invalida token anterior y permite uno posterior', async () => {
+  const oldToken = token();
+  currentEpoch = 'a0bb8b5f-acf7-4e9c-9f9f-a595e2088db5';
+  assert.equal((await execute(`Bearer ${oldToken}`)).res.statusCode, 401);
+  assert.equal((await execute(`Bearer ${token()}`)).nextCalls, 1);
+});
+
 test.after(() => {
   Object.assign(authRepository, originalRepository);
+  sessionEpoch.get = originalEpochGet;
 });

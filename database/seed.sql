@@ -129,3 +129,6 @@ VALUES
     ('control_caja_activo', 'false', 'logico', 'Activa el requisito de caja abierta para vender.', TRUE, NULL),
     ('serie_comprobante', 'SIN_CONFIGURAR', 'texto', 'Serie configurable para comprobantes internos.', TRUE, NULL),
     ('siguiente_numero_comprobante', '1', 'entero', 'Siguiente número configurable de comprobante.', TRUE, NULL);
+
+-- La clave interna jwt_session_epoch no usa un UUID fijo compartido.
+-- Inicializarla una sola vez con: npm --prefix backend run init-session-epoch

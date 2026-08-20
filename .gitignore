@@ -38,9 +38,11 @@ desktop.ini
 !.vscode/settings.json
 
 # Respaldos privados
-backups/
+/backups/
 database/backups/
 database/private/
+backend/storage/backups/*
+!backend/storage/backups/.gitkeep
 
 # Archivos de respaldo
 *.bak
