@@ -7,6 +7,11 @@ La ruta `/backups`, protegida por `respaldos.ver`, muestra historial y filtros.
 `respaldos.restaurar` el modal que exige `RESTAURAR`. Al finalizar, la rotación del
 epoch provoca el flujo global existente de `401` y nuevo inicio de sesión.
 
+La recuperación manual ante pérdida total dispone del comando administrativo
+`rotate-session-epoch`, separado de la inicialización idempotente. Su procedimiento
+oficial, las verificaciones y la base temporal obligatoria se documentan en
+`docs/09-recuperacion-desastres.md`. No existen respaldos programados.
+
 ## Catálogos de productos
 
 El frontend dispone de pantallas funcionales y protegidas por `productos.ver` para:

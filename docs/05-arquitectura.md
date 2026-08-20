@@ -18,3 +18,10 @@ lo compara con MariaDB. Tras importar se genera y verifica un UUID nuevo. Si el
 import comienza y el epoch no puede rotarse, el coordinador conserva mantenimiento.
 Una instalación inicial ejecuta `npm --prefix backend run init-session-epoch`; el
 script usa `crypto.randomUUID()`, `INSERT IGNORE` y nunca imprime el valor.
+
+La recuperación manual no atraviesa el servicio de restauración. Para ese escenario,
+`npm --prefix backend run rotate-session-epoch` invoca `sessionEpoch.rotate()` con la
+conexión configurada, rechaza argumentos y cierra el pool. La actualización y su
+verificación son transaccionales; un fallo produce código distinto de cero y un
+mensaje genérico, sin exponer el UUID. El backend debe permanecer detenido durante
+el procedimiento descrito en `docs/09-recuperacion-desastres.md`.

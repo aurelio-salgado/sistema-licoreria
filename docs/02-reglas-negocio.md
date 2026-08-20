@@ -781,6 +781,19 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 **Validación:** Las operaciones incompatibles serán rechazadas o permanecerán fuera de ejecución hasta concluir la restauración, sin generar cambios parciales.
 
+### RN-BKP-007 — Invalidación después de recuperación manual
+
+**Descripción:** Después de reconstruir MariaDB desde un respaldo fuera de
+LIQUORIX, el backend permanecerá detenido hasta verificar la base y rotar
+explícitamente `jwt_session_epoch` mediante el comando operativo aprobado.
+
+**Aplica a:** Recuperación manual ante desastre y autenticación.
+
+**Validación:** `init-session-epoch` no se considerará una rotación. El sistema solo
+volverá al servicio si `rotate-session-epoch` termina correctamente, sin mostrar el
+UUID, y los JWT anteriores son rechazados. El procedimiento completo se define en
+`docs/09-recuperacion-desastres.md`.
+
 ### 6.18 Configuración general
 
 ### RN-CON-001 — Sucursal única
