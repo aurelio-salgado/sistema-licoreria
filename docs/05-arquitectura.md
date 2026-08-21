@@ -19,6 +19,25 @@ import comienza y el epoch no puede rotarse, el coordinador conserva mantenimien
 Una instalación inicial ejecuta `npm --prefix backend run init-session-epoch`; el
 script usa `crypto.randomUUID()`, `INSERT IGNORE` y nunca imprime el valor.
 
+## Catálogo público
+
+`modules/publicCatalog` separa ruta, controlador, servicio, repositorio y validación
+sin reutilizar la proyección administrativa de productos. La consulta pública no
+usa JWT, aplica una whitelist de filtros y calcula únicamente disponibilidad
+booleana. `/catalog` posee layout público propio con la identidad visual existente y
+permanece fuera de `ProtectedRoute` y `PublicOnlyRoute`.
+
+Las imágenes se aíslan en `storage/products`; nunca se publica `storage` completo.
+Una ruta controlada valida nombre UUID, resolución dentro de la carpeta, archivo
+regular, límite y firma antes de responder. Solo los endpoints administrativos de
+imagen usan `multer` con `memoryStorage`, un archivo, 2 MB y cero campos de texto.
+El servicio valida nuevamente MIME y firma antes de escribir, genera UUID y actualiza
+referencia y bitácora en transacción. Un reemplazo retira el archivo anterior solo
+después del commit; una transacción fallida limpia el archivo nuevo.
+
+Los logos de marca reutilizan esta validación y escritura segura con almacenamiento
+separado en `storage/brands` y lectura pública controlada; no se publica el storage.
+
 La recuperación manual no atraviesa el servicio de restauración. Para ese escenario,
 `npm --prefix backend run rotate-session-epoch` invoca `sessionEpoch.rotate()` con la
 conexión configurada, rechaza argumentos y cierra el pool. La actualización y su

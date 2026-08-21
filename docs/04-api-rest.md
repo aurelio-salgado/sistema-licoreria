@@ -198,6 +198,8 @@ coincidencias únicamente en `nombre`. Body de creación/edición:
 | POST | `/brands` | `productos.crear` | Crea una marca. |
 | PUT | `/brands/:id` | `productos.editar` | Reemplaza nombre y descripción. |
 | PATCH | `/brands/:id/status` | `productos.desactivar` | Cambia estado. |
+| PUT | `/brands/:id/image` | `productos.editar` | Agrega o reemplaza el logo local. |
+| DELETE | `/brands/:id/image` | `productos.editar` | Elimina el logo local. |
 
 Filtros y paginación coinciden con categorías. En marcas, `search` también busca
 coincidencias únicamente en `nombre`. Body:
@@ -260,6 +262,34 @@ Categoría, marca y unidad deben existir y estar activas. Código y código de b
 Política de costo: `POST` acepta `costo_promedio` no negativo y usa `0.00` si se omite, siempre con existencia inicial cero. En `PUT` es opcional: omitirlo conserva el valor vigente; con existencia cero puede corregirse, y con existencia positiva solo se admite un valor monetariamente equivalente al actual. Durante la operación, confirmar una compra es la fuente normal que lo recalcula ponderadamente. Los ajustes y las anulaciones no lo cambian. `porcentaje_impuesto` se conserva como dato del producto, pero no interviene en la política fiscal vigente: compras y ventas usan `impuesto_activo` y `tasa_impuesto` globales; `descuento_maximo` aplica exclusivamente a las líneas de venta.
 
 Respuesta de listado: `{ products, pagination }`; mutaciones/detalle: `{ product }`. Estado: `{ "estado": "inactivo" }`.
+
+### 9.1 Catálogo público
+
+`GET /api/v1/public/catalog` no requiere JWT. Admite exclusivamente `page` (1),
+`limit` (12, máximo 48), `search`, `id_categoria` e `id_marca`. La búsqueda cubre
+solo el nombre y se ejecuta en MariaDB. Devuelve productos, categorías y marcas
+activos; los agotados continúan visibles.
+
+Cada producto expone únicamente `id_producto`, `nombre`, `precio_venta`, `imagen`,
+`categoria`, `marca` y `disponible`. Este último es booleano y se calcula con
+`existencia > 0`; nunca se entrega la cantidad. La respuesta incluye `pagination` y
+los catálogos públicos `filters.categories` y `filters.brands`.
+
+`GET /api/v1/public/catalog/images/:filename` sirve exclusivamente archivos con
+nombre UUID v4 y extensión JPEG, PNG o WebP desde `storage/products`. Verifica firma,
+tamaño máximo de 2 MB y ubicación; usa `nosniff`, disposición `inline` y `404`
+genérico. No publica `storage` ni permite acceder a respaldos.
+
+| Método | Endpoint | Permiso | Descripción |
+| --- | --- | --- | --- |
+| PUT | `/products/:id/image` | `productos.editar` | Carga o reemplaza la imagen local. |
+| DELETE | `/products/:id/image` | `productos.editar` | Elimina la referencia de imagen. |
+
+`PUT` recibe exclusivamente `multipart/form-data` con un archivo en el campo
+`image`. Admite JPEG, PNG o WebP de hasta 2 MB; valida MIME declarado y firma real,
+genera un UUID y nunca utiliza el nombre enviado por el cliente. `DELETE` no recibe
+ruta ni nombre y es idempotente cuando el producto ya no tiene imagen. Ambas
+operaciones requieren JWT, `productos.editar` y conservan el CRUD JSON actual.
 
 ## 10. Clientes
 
@@ -628,6 +658,6 @@ el mismo `401 No autorizado`, sin revelar el valor vigente.
 
 ## 20. Alcance implementado
 
-La API montada contiene 86 combinaciones método/path. Respaldos manuales, consulta y
+La API montada contiene 91 combinaciones método/path. Respaldos manuales, consulta y
 descarga están implementados. La restauración controlada está implementada y rota
 las sesiones globales; las pruebas automáticas sustituyen los procesos externos.

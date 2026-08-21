@@ -1,5 +1,6 @@
 const PRODUCT_COLUMNS = `
   p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
+  p.imagen_referencia,
   p.costo_promedio, p.precio_venta, p.existencia, p.existencia_minima,
   p.porcentaje_impuesto, p.estado, p.creado_en, p.actualizado_en,
   c.id_categoria, c.nombre AS categoria_nombre,
@@ -202,6 +203,13 @@ async function changeStatus(connection, productId, state) {
   );
 }
 
+async function updateImageReference(connection, productId, reference) {
+  await connection.execute(
+    'UPDATE productos SET imagen_referencia = ? WHERE id_producto = ?',
+    [reference, productId],
+  );
+}
+
 async function createAudit(connection, data) {
   await connection.execute(
     `INSERT INTO bitacora (
@@ -236,4 +244,5 @@ module.exports = {
   findUnit,
   list,
   update,
+  updateImageReference,
 };

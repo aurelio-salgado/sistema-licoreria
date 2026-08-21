@@ -21,4 +21,5 @@ export const navigationItems = [
   { label: 'Respaldos', path: '/backups', permission: 'respaldos.ver', icon: 'RS', available: true },
   { label: 'Reportes', path: '/reports', permission: 'reportes.ver', icon: 'RE', available: true },
   { label: 'Configuración', path: '/settings', permission: 'configuracion.ver', icon: 'CF', available: true },
+  { label: 'Catálogo público', path: '/catalog', icon: 'CP', available: true, publicLink: true },
 ]

@@ -1,5 +1,7 @@
 const pool = require('../../config/database');
 const brandRepository = require('./brand.repository');
+const imageStorage = require('../products/product.image');
+const env = require('../../config/env');
 const {
   validateBrandInput,
   validateId,
@@ -180,10 +182,48 @@ async function changeBrandStatus(rawId, rawData, actor) {
   });
 }
 
+async function saveBrandImage(rawId, file, actor) {
+  const brandId = validateId(rawId);
+  if (!(await brandRepository.findById(pool, brandId))) throw brandNotFoundError();
+  imageStorage.validate(file);
+  let newReference;
+  try {
+    newReference = await imageStorage.write(file, { storagePath: env.brandImages.storagePath });
+    const result = await runTransaction(async (connection) => {
+      const current = await brandRepository.findByIdForUpdate(connection, brandId);
+      if (!current) throw brandNotFoundError();
+      await brandRepository.updateImageReference(connection, brandId, newReference);
+      await brandRepository.createAudit(connection, { userId: actor.userId, action: current.imagen_referencia ? 'reemplazar_imagen' : 'agregar_imagen', brandId, previousData: { imagen_referencia: current.imagen_referencia || null }, newData: { imagen_referencia: newReference }, ipAddress: actor.ipAddress });
+      return { old: current.imagen_referencia, brand: await brandRepository.findById(connection, brandId) };
+    });
+    if (result.old) imageStorage.remove(result.old, { storagePath: env.brandImages.storagePath }).catch(() => {});
+    return result.brand;
+  } catch (error) {
+    if (newReference) await imageStorage.remove(newReference, { storagePath: env.brandImages.storagePath }).catch(() => {});
+    throw error;
+  }
+}
+
+async function deleteBrandImage(rawId, actor) {
+  const brandId = validateId(rawId);
+  const result = await runTransaction(async (connection) => {
+    const current = await brandRepository.findByIdForUpdate(connection, brandId);
+    if (!current) throw brandNotFoundError();
+    if (!current.imagen_referencia) return { old: null, brand: current };
+    await brandRepository.updateImageReference(connection, brandId, null);
+    await brandRepository.createAudit(connection, { userId: actor.userId, action: 'eliminar_imagen', brandId, previousData: { imagen_referencia: current.imagen_referencia }, newData: { imagen_referencia: null }, ipAddress: actor.ipAddress });
+    return { old: current.imagen_referencia, brand: await brandRepository.findById(connection, brandId) };
+  });
+  if (result.old) imageStorage.remove(result.old, { storagePath: env.brandImages.storagePath }).catch(() => {});
+  return result.brand;
+}
+
 module.exports = {
   changeBrandStatus,
   createBrand,
+  deleteBrandImage,
   getBrand,
   listBrands,
+  saveBrandImage,
   updateBrand,
 };

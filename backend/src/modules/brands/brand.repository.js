@@ -2,6 +2,7 @@ const BRAND_COLUMNS = `
   id_marca,
   nombre,
   descripcion,
+  imagen_referencia,
   estado,
   creado_en,
   actualizado_en
@@ -121,6 +122,10 @@ async function changeStatus(connection, brandId, state) {
   );
 }
 
+async function updateImageReference(connection, brandId, reference) {
+  await connection.execute('UPDATE marcas SET imagen_referencia = ? WHERE id_marca = ?', [reference, brandId]);
+}
+
 async function createAudit(
   connection,
   { userId, action, brandId, previousData, newData, ipAddress },
@@ -162,4 +167,5 @@ module.exports = {
   findByName,
   list,
   update,
+  updateImageReference,
 };

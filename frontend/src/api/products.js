@@ -18,6 +18,12 @@ export const productsApi = {
   getById: (id) => api.get(`/products/${id}`),
   create: (values) => api.post('/products', values),
   update: (id, values) => api.put(`/products/${id}`, values),
+  uploadImage: (id, file) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.put(`/products/${id}/image`, formData)
+  },
+  deleteImage: (id) => api.delete(`/products/${id}/image`),
   updateStatus: (id, status) =>
     api.patch(`/products/${id}/status`, { estado: status }),
 }

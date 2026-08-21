@@ -59,11 +59,15 @@ async function changeBrandStatus(req, res, next) {
     next(error);
   }
 }
+async function saveBrandImage(req, res, next) { try { const brand = await brandService.saveBrandImage(req.params.id, req.file, getActor(req)); res.status(200).json({ success: true, data: { brand } }); } catch (error) { next(error); } }
+async function deleteBrandImage(req, res, next) { try { const brand = await brandService.deleteBrandImage(req.params.id, getActor(req)); res.status(200).json({ success: true, data: { brand } }); } catch (error) { next(error); } }
 
 module.exports = {
   changeBrandStatus,
   createBrand,
+  deleteBrandImage,
   getBrand,
   listBrands,
+  saveBrandImage,
   updateBrand,
 };

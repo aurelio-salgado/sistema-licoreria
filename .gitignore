@@ -44,6 +44,12 @@ database/private/
 backend/storage/backups/*
 !backend/storage/backups/.gitkeep
 
+# Imágenes de productos administradas fuera del repositorio
+backend/storage/products/*
+!backend/storage/products/.gitkeep
+backend/storage/brands/*
+!backend/storage/brands/.gitkeep
+
 # Archivos de respaldo
 *.bak
 *.dump

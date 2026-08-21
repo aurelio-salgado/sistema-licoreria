@@ -24,6 +24,8 @@ import { BackupsPage } from './pages/BackupsPage'
 import { PermissionRoute } from './routes/PermissionRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { PublicOnlyRoute } from './routes/PublicOnlyRoute'
+import { PublicCatalogLayout } from './layout/PublicCatalogLayout'
+import { PublicCatalogPage } from './pages/PublicCatalogPage'
 
 export default function App() {
   return (
@@ -38,6 +40,10 @@ export default function App() {
               </PublicOnlyRoute>
             }
           />
+
+          <Route element={<PublicCatalogLayout />}>
+            <Route path="catalog" element={<PublicCatalogPage />} />
+          </Route>
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>

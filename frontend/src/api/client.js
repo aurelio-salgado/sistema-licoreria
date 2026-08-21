@@ -41,7 +41,8 @@ export async function apiRequest(
   { auth = true, handleUnauthorized = true, headers, body, ...options } = {},
 ) {
   const requestHeaders = new Headers(headers)
-  if (body !== undefined && !requestHeaders.has('Content-Type')) {
+  const isFormData = body instanceof FormData
+  if (body !== undefined && !isFormData && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json')
   }
   if (auth && accessToken) {
@@ -53,7 +54,7 @@ export async function apiRequest(
     response = await fetch(`${API_URL}${path}`, {
       ...options,
       headers: requestHeaders,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(

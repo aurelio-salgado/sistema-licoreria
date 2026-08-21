@@ -1,5 +1,24 @@
 # Plan de pruebas
 
+## Catálogo público
+
+Las pruebas backend verifican acceso sin middleware JWT, proyección cerrada,
+disponibilidad booleana, filtros, paginación y referencias de imagen controladas.
+La lectura de archivos cubre UUID, traversal, inexistencia, tamaño, firma y MIME sin
+usar MariaDB real.
+
+La verificación frontend debe cubrir `/catalog` sin sesión y con sesión, layout
+público completo, cards con imagen y placeholder, búsqueda remota, categoría,
+marca, paginación, agotados, teclado, texto alternativo y anchos 360, 480, 768 y
+escritorio. La gestión administrativa cubre selección, preview, descarte, creación
+seguida de upload, fallo parcial, reemplazo, eliminación y fallback. En backend se
+prueban las tres firmas, MIME inconsistente, contenido falso, límite, UUID, traversal,
+producto inexistente, rollback y limpieza; las rutas mantienen autenticación y
+`productos.editar`, y Multer queda aislado con límites estrictos.
+
+Las marcas cubren logo válido, reemplazo, eliminación, placeholder, referencia
+pública mínima y selección remota desde cards con limpieza del filtro.
+
 ## Respaldos y restauración
 
 Los procesos externos siempre se sustituyen por stubs en pruebas automáticas. Se

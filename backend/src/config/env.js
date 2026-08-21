@@ -61,6 +61,18 @@ const env = Object.freeze({
       3600000,
     ),
   }),
+  productImages: Object.freeze({
+    storagePath: path.resolve(
+      __dirname,
+      '../..',
+      process.env.PRODUCT_IMAGE_STORAGE_PATH?.trim() || 'storage/products',
+    ),
+    maxBytes: 2 * 1024 * 1024,
+  }),
+  brandImages: Object.freeze({
+    storagePath: path.resolve(__dirname, '../..', process.env.BRAND_IMAGE_STORAGE_PATH?.trim() || 'storage/brands'),
+    maxBytes: 2 * 1024 * 1024,
+  }),
   getJwtConfig,
 });
 

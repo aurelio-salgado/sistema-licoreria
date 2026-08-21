@@ -1,5 +1,20 @@
 # Modelo de datos relacional
 
+## Extensión pendiente: logo local de marca
+
+`marcas.imagen_referencia VARCHAR(255) NULL` guarda únicamente un nombre UUID con
+extensión JPEG, PNG o WebP; no admite URL externa, ruta absoluta ni BLOB.
+
+```sql
+ALTER TABLE marcas
+    ADD COLUMN imagen_referencia VARCHAR(255) NULL AFTER descripcion,
+    ADD CONSTRAINT chk_marcas_imagen_referencia
+        CHECK (imagen_referencia IS NULL OR imagen_referencia REGEXP
+          '^[0-9a-f-]{36}[.](jpe?g|png|webp)$');
+```
+
+La migración permanece pendiente y no se ejecutó sobre MariaDB.
+
 ## Sistema web de control de inventario y facturación para una licorería
 
 ## 1. Información del documento
@@ -272,6 +287,7 @@ El dashboard y los reportes se obtendrán mediante consultas sobre las tablas op
 | `codigo_barras` | VARCHAR(80) | Sí | UQ | Único cuando exista | Código de barras. |
 | `nombre` | VARCHAR(150) | No | IDX | No vacío | Nombre comercial. |
 | `descripcion` | TEXT | Sí | — | — | Descripción. |
+| `imagen_referencia` | VARCHAR(255) | Sí | — | UUID v4 y extensión JPEG, PNG o WebP | Nombre local de la imagen pública controlada. |
 | `id_categoria` | BIGINT UNSIGNED | No | FK | Categoría existente | Clasificación. |
 | `id_marca` | BIGINT UNSIGNED | No | FK | Marca existente | Marca. |
 | `id_unidad` | BIGINT UNSIGNED | No | FK | Unidad existente | Unidad principal. |
@@ -292,6 +308,22 @@ El dashboard y los reportes se obtendrán mediante consultas sobre las tablas op
 - **Política de eliminación o desactivación:** desactivación lógica; productos con historia no se eliminan.
 
 El modelo actual no conserva `costo_promedio_anterior` ni un kardex valorizado. Por ello, una anulación de compra no intentará reconstruir algebraicamente la valoración ni alterará costos históricos de ventas. Los snapshots de costo o un kardex valorizado quedan como evolución futura y requerirán una decisión y ampliación de modelo expresas.
+
+La primera versión admite una sola imagen local opcional. No se requiere
+`imagen_tipo` porque no existe fuente URL aprobada; `imagen_referencia` almacena solo
+el nombre generado dentro del almacenamiento de productos. Migración pendiente de
+ejecución controlada:
+
+```sql
+ALTER TABLE productos
+    ADD COLUMN imagen_referencia VARCHAR(255) NULL AFTER descripcion,
+    ADD CONSTRAINT chk_productos_imagen_referencia
+        CHECK (
+            imagen_referencia IS NULL
+            OR imagen_referencia REGEXP
+               '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.](jpe?g|png|webp)$'
+        );
+```
 
 ### 7.10 `clientes`
 

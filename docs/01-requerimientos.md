@@ -272,6 +272,20 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 **Criterio básico de aceptación:** Un producto inactivo no puede incluirse en nuevas compras o ventas, pero permanece en consultas históricas.
 
+### RF-019A — Catálogo público informativo
+
+**Descripción:** Cualquier visitante podrá consultar sin autenticación los productos
+activos mediante un catálogo paginado con búsqueda por nombre, categoría, marca,
+precio vigente, imagen local opcional y disponibilidad general.
+
+**Actor principal:** Visitante.
+
+**Prioridad:** Media.
+
+**Criterio básico de aceptación:** El catálogo no ofrece carrito, compra, pago,
+reserva ni modificación de inventario; tampoco expone costo, existencia exacta,
+datos históricos o información administrativa.
+
 ### 9.8 Clientes
 
 ### RF-020 — Gestión de clientes

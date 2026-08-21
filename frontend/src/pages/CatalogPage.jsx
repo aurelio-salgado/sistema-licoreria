@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { ErrorState, LoadingState } from '../components/FeedbackStates'
 import { ConfirmDialog, EmptyState, ErrorDialog, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
 import { createActionError } from '../utils/actionErrors'
+import { publicImageUrl } from '../api/publicCatalog'
 
 const PAGE_LIMIT = 10
 
@@ -62,6 +63,10 @@ function validate(config, values) {
 function CatalogForm({ config, record, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState(() => initialValues(config, record))
   const [errors, setErrors] = useState({})
+  const [imageFile, setImageFile] = useState(null)
+  const [removeImage, setRemoveImage] = useState(false)
+  const [preview, setPreview] = useState('')
+  useEffect(() => { if (!imageFile) { setPreview(''); return undefined }; const url = URL.createObjectURL(imageFile); setPreview(url); return () => URL.revokeObjectURL(url) }, [imageFile])
   const setValue = (name, value) => setValues((current) => ({ ...current, [name]: value }))
   const submit = (event) => {
     event.preventDefault()
@@ -69,7 +74,7 @@ function CatalogForm({ config, record, busy, onCancel, onSubmit }) {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
     const payload = Object.fromEntries(config.fields.map((field) => [field.name, field.type === 'boolean' ? values[field.name] : (values[field.name].trim() || null)]))
-    onSubmit(payload)
+    onSubmit(payload, { file: imageFile, remove: removeImage })
   }
 
   return (
@@ -87,6 +92,7 @@ function CatalogForm({ config, record, busy, onCancel, onSubmit }) {
           )}
         </FormField>
       ))}
+      {config.endpoint === '/brands' && <div className="catalog-image-editor"><span className="form-label">Logo de marca</span>{(preview || (record?.imagen_referencia && !removeImage)) ? <img src={preview || publicImageUrl(`/api/v1/public/catalog/brand-images/${record.imagen_referencia}`)} alt={`Logo de ${record?.nombre || 'marca'}`} /> : <div className="catalog-image-placeholder">{(record?.nombre || values.nombre || 'M').charAt(0).toUpperCase()}</div>}<div><label className="button button--secondary button--compact" htmlFor="brand-image">{record?.imagen_referencia ? 'Reemplazar' : 'Seleccionar imagen'}</label><input className="visually-hidden" id="brand-image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size <= 2 * 1024 * 1024 && ['image/jpeg','image/png','image/webp'].includes(file.type)) { setImageFile(file); setRemoveImage(false) }; event.target.value = '' }} />{imageFile && <button className="button button--secondary button--compact" type="button" onClick={() => setImageFile(null)}>Quitar selección</button>}{record?.imagen_referencia && !imageFile && !removeImage && <button className="button button--danger button--compact" type="button" onClick={() => setRemoveImage(true)}>Eliminar</button>}<small>JPEG, PNG o WebP · máximo 2 MB</small></div></div>}
       <div className="modal-footer catalog-form-actions">
         <button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button>
         <button className="button button--primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
@@ -129,11 +135,14 @@ export function CatalogPage({ type }) {
 
   const columns = useMemo(() => config.fields.map((field) => field.name), [config])
   const closeEditor = () => { setEditing(null); setMutationError(null) }
-  const saveRecord = async (payload) => {
+  const saveRecord = async (payload, imageChange) => {
     setSaving(true); setMutationError(null)
     try {
-      if (editing?.record) await catalogsApi.update(config.endpoint, editing.record[config.idField], payload)
-      else await catalogsApi.create(config.endpoint, payload)
+      let recordId = editing?.record?.[config.idField]
+      if (editing?.record) await catalogsApi.update(config.endpoint, recordId, payload)
+      else { const response = await catalogsApi.create(config.endpoint, payload); recordId = response?.data?.[config.singular === 'marca' ? 'brand' : config.singular]?.[config.idField] }
+      if (config.endpoint === '/brands' && imageChange?.file) await catalogsApi.uploadImage(config.endpoint, recordId, imageChange.file)
+      else if (config.endpoint === '/brands' && editing?.record && imageChange?.remove) await catalogsApi.deleteImage(config.endpoint, recordId)
       setFeedback(`${config.singular.charAt(0).toUpperCase() + config.singular.slice(1)} ${editing?.record ? 'actualizada' : 'creada'} correctamente.`)
       closeEditor(); await loadRecords()
     } catch (requestError) {

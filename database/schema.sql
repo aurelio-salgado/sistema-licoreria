@@ -115,12 +115,15 @@ CREATE TABLE IF NOT EXISTS marcas (
     id_marca BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(100) NOT NULL,
     descripcion VARCHAR(255) NULL,
+    imagen_referencia VARCHAR(255) NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'activo',
     creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT pk_marcas PRIMARY KEY (id_marca),
     CONSTRAINT uq_marcas_nombre UNIQUE (nombre),
     CONSTRAINT chk_marcas_estado CHECK (estado IN ('activo', 'inactivo')),
+    CONSTRAINT chk_marcas_imagen_referencia
+        CHECK (imagen_referencia IS NULL OR imagen_referencia REGEXP '^[0-9a-f-]{36}\\.(jpe?g|png|webp)$'),
     INDEX idx_marcas_estado (estado)
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
@@ -153,6 +156,7 @@ CREATE TABLE IF NOT EXISTS productos (
     codigo_barras VARCHAR(80) NULL,
     nombre VARCHAR(150) NOT NULL,
     descripcion TEXT NULL,
+    imagen_referencia VARCHAR(255) NULL,
     id_categoria BIGINT UNSIGNED NOT NULL,
     id_marca BIGINT UNSIGNED NOT NULL,
     id_unidad BIGINT UNSIGNED NOT NULL,
@@ -167,6 +171,8 @@ CREATE TABLE IF NOT EXISTS productos (
     CONSTRAINT pk_productos PRIMARY KEY (id_producto),
     CONSTRAINT uq_productos_codigo UNIQUE (codigo),
     CONSTRAINT uq_productos_codigo_barras UNIQUE (codigo_barras),
+    CONSTRAINT chk_productos_imagen_referencia
+        CHECK (imagen_referencia IS NULL OR imagen_referencia REGEXP '^[0-9a-f-]{36}\\.(jpe?g|png|webp)$'),
     CONSTRAINT chk_productos_costo_promedio CHECK (costo_promedio >= 0),
     CONSTRAINT chk_productos_precio_venta CHECK (precio_venta > 0),
     CONSTRAINT chk_productos_existencia CHECK (existencia >= 0),
@@ -594,6 +600,7 @@ CREATE TABLE IF NOT EXISTS configuracion (
     valor TEXT NOT NULL,
     tipo_dato VARCHAR(30) NOT NULL,
     descripcion VARCHAR(255) NULL,
+    imagen_referencia VARCHAR(255) NULL,
     es_critica BOOLEAN NOT NULL,
     id_usuario_actualizacion BIGINT UNSIGNED NULL,
     creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

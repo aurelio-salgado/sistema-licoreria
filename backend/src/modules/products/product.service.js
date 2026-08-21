@@ -1,5 +1,6 @@
 const pool = require('../../config/database');
 const productRepository = require('./product.repository');
+const productImage = require('./product.image');
 const {
   validateId,
   validateListQuery,
@@ -221,10 +222,70 @@ async function changeProductStatus(rawId, rawData, actor) {
   });
 }
 
+async function saveProductImage(rawId, file, actor) {
+  const productId = validateId(rawId);
+  const existing = await productRepository.findById(pool, productId);
+  if (!existing) throw productNotFoundError();
+  productImage.validate(file);
+
+  let newReference;
+  try {
+    newReference = await productImage.write(file);
+    const result = await runTransaction(async (connection) => {
+      const currentProduct = await productRepository.findByIdForUpdate(connection, productId);
+      if (!currentProduct) throw productNotFoundError();
+      await productRepository.updateImageReference(connection, productId, newReference);
+      await productRepository.createAudit(connection, {
+        userId: actor.userId,
+        action: currentProduct.imagen_referencia ? 'reemplazar_imagen' : 'agregar_imagen',
+        productId,
+        previousData: { imagen_referencia: currentProduct.imagen_referencia || null },
+        newData: { imagen_referencia: newReference },
+        ipAddress: actor.ipAddress,
+      });
+      return { previousReference: currentProduct.imagen_referencia, product: await productRepository.findById(connection, productId) };
+    });
+    if (result.previousReference) {
+      productImage.remove(result.previousReference).catch((error) => console.error('No fue posible retirar una imagen anterior de producto', { productId, error: error.message }));
+    }
+    return result.product;
+  } catch (error) {
+    if (newReference) {
+      try { await productImage.remove(newReference); } catch { /* La referencia no quedó expuesta. */ }
+    }
+    throw error;
+  }
+}
+
+async function deleteProductImage(rawId, actor) {
+  const productId = validateId(rawId);
+  const result = await runTransaction(async (connection) => {
+    const currentProduct = await productRepository.findByIdForUpdate(connection, productId);
+    if (!currentProduct) throw productNotFoundError();
+    if (!currentProduct.imagen_referencia) return { previousReference: null, product: currentProduct };
+    await productRepository.updateImageReference(connection, productId, null);
+    await productRepository.createAudit(connection, {
+      userId: actor.userId,
+      action: 'eliminar_imagen',
+      productId,
+      previousData: { imagen_referencia: currentProduct.imagen_referencia },
+      newData: { imagen_referencia: null },
+      ipAddress: actor.ipAddress,
+    });
+    return { previousReference: currentProduct.imagen_referencia, product: await productRepository.findById(connection, productId) };
+  });
+  if (result.previousReference) {
+    productImage.remove(result.previousReference).catch((error) => console.error('No fue posible retirar una imagen eliminada de producto', { productId, error: error.message }));
+  }
+  return result.product;
+}
+
 module.exports = {
   changeProductStatus,
   createProduct,
+  deleteProductImage,
   getProduct,
   listProducts,
+  saveProductImage,
   updateProduct,
 };

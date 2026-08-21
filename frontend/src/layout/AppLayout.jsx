@@ -94,7 +94,7 @@ export function AppLayout() {
             ) : item.available ? (
               <NavLink
                 key={item.label}
-                className={({ isActive }) => `nav-item${isActive ? ' nav-item--active' : ''}`}
+                className={({ isActive }) => `nav-item${item.publicLink ? ' nav-item--public' : ''}${isActive ? ' nav-item--active' : ''}`}
                 to={item.path}
                 end={item.path === '/'}
                 onClick={handleNavigation}

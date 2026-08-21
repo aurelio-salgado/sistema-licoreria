@@ -3,14 +3,17 @@ const { after, test } = require('node:test');
 
 const pool = require('../../config/database');
 const repository = require('./product.repository');
+const productImage = require('./product.image');
 const service = require('./product.service');
 
 const originalGetConnection = pool.getConnection;
 const originalRepository = { ...repository };
+const originalProductImage = { ...productImage };
 
 after(() => {
   pool.getConnection = originalGetConnection;
   Object.assign(repository, originalRepository);
+  Object.assign(productImage, originalProductImage);
 });
 
 function productInput(overrides = {}) {
@@ -178,4 +181,76 @@ test('bloquea antes de actualizar y registra la bitácora normal', async () => {
   assert.equal(context.calls.audits[0].action, 'actualizar');
   assert.equal(context.calls.audits[0].previousData.costo_promedio, '4.00');
   assert.equal(context.calls.audits[0].newData.costo_promedio, '5.00');
+});
+
+test('agrega una imagen y registra solamente referencias seguras', async () => {
+  const context = scenario();
+  context.current.imagen_referencia = null;
+  let storedReference = null;
+  repository.findById = async () => ({ ...context.current, imagen_referencia: storedReference });
+  repository.updateImageReference = async (_connection, _id, reference) => { storedReference = reference; };
+  productImage.validate = () => '.png';
+  productImage.write = async () => '123e4567-e89b-42d3-a456-426614174000.png';
+  productImage.remove = async () => {};
+  const product = await service.saveProductImage(5, { buffer: Buffer.from('x'), mimetype: 'image/png' }, actor);
+  assert.equal(product.imagen_referencia, '123e4567-e89b-42d3-a456-426614174000.png');
+  assert.equal(context.calls.audits[0].action, 'agregar_imagen');
+  assert.deepEqual(context.calls.audits[0].newData, { imagen_referencia: product.imagen_referencia });
+});
+
+test('limpia la imagen nueva si falla la transacción', async () => {
+  const context = scenario({ failAt: 'audit' });
+  context.current.imagen_referencia = null;
+  repository.findById = async () => context.current;
+  repository.updateImageReference = async () => {};
+  const removed = [];
+  productImage.validate = () => '.jpg';
+  productImage.write = async () => '123e4567-e89b-42d3-a456-426614174000.jpg';
+  productImage.remove = async (reference) => removed.push(reference);
+  await assert.rejects(service.saveProductImage(5, { buffer: Buffer.from('x'), mimetype: 'image/jpeg' }, actor));
+  assert.deepEqual(removed, ['123e4567-e89b-42d3-a456-426614174000.jpg']);
+  assert.equal(context.transaction.rollback, 1);
+});
+
+test('reemplaza referencia y retira la imagen anterior después del commit', async () => {
+  const context = scenario();
+  context.current.imagen_referencia = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg';
+  let storedReference = context.current.imagen_referencia;
+  repository.findById = async () => ({ ...context.current, imagen_referencia: storedReference });
+  repository.updateImageReference = async (_connection, _id, reference) => { storedReference = reference; };
+  const removed = [];
+  productImage.validate = () => '.webp';
+  productImage.write = async () => '123e4567-e89b-42d3-a456-426614174000.webp';
+  productImage.remove = async (reference) => removed.push(reference);
+  await service.saveProductImage(5, { buffer: Buffer.from('x'), mimetype: 'image/webp' }, actor);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(context.calls.audits[0].action, 'reemplazar_imagen');
+  assert.deepEqual(removed, ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg']);
+  assert.equal(context.transaction.commit, 1);
+});
+
+test('elimina referencia de forma idempotente y audita solo cuando existe', async () => {
+  const context = scenario();
+  context.current.imagen_referencia = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png';
+  repository.updateImageReference = async (_connection, _id, reference) => { context.current.imagen_referencia = reference; };
+  productImage.remove = async () => {};
+  await service.deleteProductImage(5, actor);
+  assert.equal(context.calls.audits[0].action, 'eliminar_imagen');
+  assert.equal(context.current.imagen_referencia, null);
+
+  const second = scenario();
+  second.current.imagen_referencia = null;
+  productImage.remove = async () => {};
+  await service.deleteProductImage(5, actor);
+  assert.equal(second.calls.audits.length, 0);
+});
+
+test('rechaza upload para producto inexistente antes de escribir archivo', async () => {
+  scenario();
+  repository.findById = async () => null;
+  let writes = 0;
+  productImage.validate = () => '.png';
+  productImage.write = async () => { writes += 1; };
+  await assert.rejects(service.saveProductImage(999, { buffer: Buffer.from('x'), mimetype: 'image/png' }, actor), (error) => error.statusCode === 404);
+  assert.equal(writes, 0);
 });

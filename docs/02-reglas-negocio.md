@@ -275,6 +275,30 @@ El costo promedio podrá establecerse al crear el producto y corregirse administ
 
 **Validación:** Las nuevas operaciones excluirán productos inactivos y los detalles históricos conservarán sus valores originales.
 
+### RN-PRO-008 — Exposición pública mínima
+
+**Descripción:** El catálogo público mostrará únicamente productos, categorías y
+marcas activos, con precio, imagen opcional y disponibilidad derivada de
+`existencia > 0`.
+
+**Aplica a:** Catálogo público y productos.
+
+**Validación:** La respuesta pública no incluirá costo promedio, existencia exacta,
+existencia mínima, códigos de barras, impuesto, proveedor, auditoría ni timestamps.
+Los agotados permanecen visibles como `Agotado`.
+
+### RN-PRO-009 — Imagen local controlada
+
+**Descripción:** Cada producto podrá asociar como máximo una imagen local opcional
+JPEG, PNG o WebP. La base guardará solo un nombre generado y nunca contenido BLOB,
+ruta absoluta o nombre original.
+
+**Aplica a:** Administración de productos, almacenamiento y catálogo público.
+
+**Validación:** La lectura pública comprobará nombre, ubicación, tamaño, extensión y
+firma; no expondrá otras carpetas de `storage`. La carga administrativa queda
+condicionada a validación multipart autorizada y al permiso `productos.editar`.
+
 ### 6.6 Clientes
 
 ### RN-CLI-001 — Cliente predeterminado

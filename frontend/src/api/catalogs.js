@@ -15,6 +15,8 @@ export const catalogsApi = {
   list: (endpoint, filters) => api.get(`${endpoint}?${buildQuery(filters)}`),
   create: (endpoint, values) => api.post(endpoint, values),
   update: (endpoint, id, values) => api.put(`${endpoint}/${id}`, values),
+  uploadImage: (endpoint, id, file) => { const data = new FormData(); data.append('image', file); return api.put(`${endpoint}/${id}/image`, data) },
+  deleteImage: (endpoint, id) => api.delete(`${endpoint}/${id}/image`),
   updateStatus: (endpoint, id, status) =>
     api.patch(`${endpoint}/${id}/status`, { estado: status }),
 }

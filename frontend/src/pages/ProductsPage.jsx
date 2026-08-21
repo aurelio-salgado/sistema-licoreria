@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { catalogsApi } from '../api/catalogs'
 import { productsApi } from '../api/products'
+import { publicImageUrl } from '../api/publicCatalog'
 import { useAuth } from '../auth/useAuth'
 import { ConfirmDialog, EmptyState, ErrorDialog, FormField, Modal, PageHeader, Pagination, StatusBadge } from '../components/CatalogUi'
 import { ErrorState, LoadingState } from '../components/FeedbackStates'
@@ -8,6 +9,8 @@ import { formatMoney, formatQuantity } from '../utils/formatters'
 import { createActionError } from '../utils/actionErrors'
 
 const PAGE_LIMIT = 10
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const emptyFilters = {
   page: 1,
   limit: PAGE_LIMIT,
@@ -129,15 +132,33 @@ function buildPayload(values, { omitAverageCost }) {
 function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState(() => createInitialValues(product))
   const [errors, setErrors] = useState({})
+  const [imageFile, setImageFile] = useState(null)
+  const [imageError, setImageError] = useState('')
+  const [removeCurrentImage, setRemoveCurrentImage] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
   const hasStock = Number(product?.existencia ?? 0) > 0
   const selectedUnit = catalogs.units.find((unit) => String(unit.id_unidad) === values.id_unidad)
   const setValue = (field, value) => setValues((current) => ({ ...current, [field]: value }))
+  useEffect(() => {
+    if (!imageFile) { setPreviewUrl(''); return undefined }
+    const url = URL.createObjectURL(imageFile)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [imageFile])
+  const selectImage = (event) => {
+    const file = event.target.files?.[0] || null
+    event.target.value = ''
+    if (!file) return
+    if (!IMAGE_TYPES.has(file.type)) { setImageError('Selecciona una imagen JPEG, PNG o WebP.'); return }
+    if (file.size > MAX_IMAGE_BYTES) { setImageError('La imagen no puede superar 2 MB.'); return }
+    setImageError(''); setImageFile(file); setRemoveCurrentImage(false)
+  }
   const submit = (event) => {
     event.preventDefault()
     const nextErrors = validateProduct(values)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
-    onSubmit(buildPayload(values, { omitAverageCost: hasStock || !values.costo_promedio.trim() }))
+    onSubmit(buildPayload(values, { omitAverageCost: hasStock || !values.costo_promedio.trim() }), { file: imageFile, remove: removeCurrentImage })
   }
 
   return (
@@ -187,6 +208,24 @@ function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
         <FormField label="Porcentaje de impuesto" name="porcentaje_impuesto" error={errors.porcentaje_impuesto} help="Valor informativo del producto; la tasa operativa actual se configura de forma global.">
           <input id="porcentaje_impuesto" className="form-control" type="number" min="0" step="0.01" value={values.porcentaje_impuesto} disabled={busy} onChange={(event) => setValue('porcentaje_impuesto', event.target.value)} />
         </FormField>
+        <div className="product-form-span-2 product-image-field">
+          <span className="form-label">Imagen del catálogo</span>
+          <div className="product-image-editor">
+            {(previewUrl || (product?.imagen_referencia && !removeCurrentImage)) ? (
+              <img className="product-image-preview" src={previewUrl || publicImageUrl(`/api/v1/public/catalog/images/${product.imagen_referencia}`)} alt={`Vista previa de ${product?.nombre || 'producto'}`} />
+            ) : <div className="product-image-placeholder" aria-hidden="true">LIQUORIX</div>}
+            <div className="product-image-controls">
+              <label className="button button--secondary button--compact" htmlFor="product-image">{product?.imagen_referencia ? 'Reemplazar imagen' : 'Seleccionar imagen'}</label>
+              <input id="product-image" className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={selectImage} />
+              {imageFile && <button className="button button--secondary button--compact" type="button" disabled={busy} onClick={() => { setImageFile(null); setImageError('') }}>Quitar selección</button>}
+              {product?.imagen_referencia && !imageFile && !removeCurrentImage && <button className="button button--danger button--compact" type="button" disabled={busy} onClick={() => setRemoveCurrentImage(true)}>Eliminar imagen</button>}
+              {removeCurrentImage && <button className="button button--secondary button--compact" type="button" disabled={busy} onClick={() => setRemoveCurrentImage(false)}>Conservar imagen</button>}
+              {imageFile && <small>{imageFile.name} · {(imageFile.size / 1024).toFixed(1)} KB</small>}
+              <small>Opcional · JPEG, PNG o WebP · máximo 2 MB</small>
+              {imageError && <small className="field-error" role="alert">{imageError}</small>}
+            </div>
+          </div>
+        </div>
       </div>
       <div className="modal-footer product-form-actions">
         <button className="button button--secondary" type="button" disabled={busy} onClick={onCancel}>Cancelar</button>
@@ -239,11 +278,28 @@ export function ProductsPage() {
   useEffect(() => { if (!feedback) return undefined; const timer = window.setTimeout(() => setFeedback(''), 4500); return () => window.clearTimeout(timer) }, [feedback])
 
   const closeEditor = () => { setEditingProduct(undefined); setMutationError(null) }
-  const saveProduct = async (payload) => {
+  const saveProduct = async (payload, imageChange) => {
     setSaving(true); setMutationError(null)
     try {
-      if (editingProduct) await productsApi.update(editingProduct.id_producto, payload)
-      else await productsApi.create(payload)
+      let productId = editingProduct?.id_producto
+      if (editingProduct) await productsApi.update(productId, payload)
+      else {
+        const response = await productsApi.create(payload)
+        productId = response?.data?.product?.id_producto
+      }
+      try {
+        if (imageChange.file) await productsApi.uploadImage(productId, imageChange.file)
+        else if (editingProduct && imageChange.remove) await productsApi.deleteImage(productId)
+      } catch (imageRequestError) {
+        await loadProducts()
+        if (imageRequestError?.status !== 401) {
+          const prefix = editingProduct
+            ? 'Los datos del producto se guardaron, pero no fue posible actualizar la imagen.'
+            : 'El producto fue creado, pero no fue posible guardar la imagen.'
+          setMutationError({ title: 'No se pudo guardar la imagen', message: `${prefix}${imageRequestError?.message ? ` ${imageRequestError.message}` : ''}` })
+        }
+        return
+      }
       setFeedback(`Producto ${editingProduct ? 'actualizado' : 'creado'} correctamente.`)
       closeEditor(); await loadProducts()
     } catch (requestError) {

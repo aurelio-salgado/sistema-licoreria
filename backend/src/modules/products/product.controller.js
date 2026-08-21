@@ -57,10 +57,34 @@ async function changeProductStatus(req, res, next) {
   }
 }
 
+async function saveProductImage(req, res, next) {
+  try {
+    const product = await productService.saveProductImage(req.params.id, req.file, getActor(req));
+    res.status(200).json({ success: true, data: { product } });
+  } catch (error) { next(error); }
+}
+
+async function validateProductImageTarget(req, res, next) {
+  try {
+    await productService.getProduct(req.params.id);
+    next();
+  } catch (error) { next(error); }
+}
+
+async function deleteProductImage(req, res, next) {
+  try {
+    const product = await productService.deleteProductImage(req.params.id, getActor(req));
+    res.status(200).json({ success: true, data: { product } });
+  } catch (error) { next(error); }
+}
+
 module.exports = {
   changeProductStatus,
   createProduct,
+  deleteProductImage,
   getProduct,
   listProducts,
+  saveProductImage,
   updateProduct,
+  validateProductImageTarget,
 };

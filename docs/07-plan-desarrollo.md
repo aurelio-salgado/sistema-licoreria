@@ -25,6 +25,19 @@ Las acciones visibles respetan `productos.crear`, `productos.editar` y
 las altas y ediciones se realizan en formularios modales, y los cambios de estado
 requieren confirmación y usan `PATCH /:id/status`. No existe eliminación física.
 
+## Catálogo público
+
+La ruta `/catalog`, disponible con o sin sesión, utiliza una plantilla pública con
+header, sidebar adaptable, body y footer sin navegación administrativa. Consulta el
+endpoint independiente `/api/v1/public/catalog`, presenta cards, placeholder local,
+búsqueda remota, categoría, marca, paginación y estados `Disponible`/`Agotado` sin
+exponer existencias.
+
+La lectura pública controlada y la gestión administrativa están implementadas.
+Productos permite seleccionar y previsualizar un archivo opcional, quitar la
+selección, reemplazar y eliminar la imagen. La carga usa endpoints multipart
+separados y el CRUD principal permanece en JSON.
+
 ## Productos
 
 La ruta `/products` ofrece listado paginado, búsqueda y filtros remotos por estado,
