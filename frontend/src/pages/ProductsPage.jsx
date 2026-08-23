@@ -134,6 +134,7 @@ function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
   const [errors, setErrors] = useState({})
   const [imageFile, setImageFile] = useState(null)
   const [imageError, setImageError] = useState('')
+  const [imageFeedback, setImageFeedback] = useState('')
   const [removeCurrentImage, setRemoveCurrentImage] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
   const hasStock = Number(product?.existencia ?? 0) > 0
@@ -149,9 +150,10 @@ function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
     const file = event.target.files?.[0] || null
     event.target.value = ''
     if (!file) return
-    if (!IMAGE_TYPES.has(file.type)) { setImageError('Selecciona una imagen JPEG, PNG o WebP.'); return }
-    if (file.size > MAX_IMAGE_BYTES) { setImageError('La imagen no puede superar 2 MB.'); return }
-    setImageError(''); setImageFile(file); setRemoveCurrentImage(false)
+    setImageFile(null); setImageFeedback('')
+    if (!IMAGE_TYPES.has(file.type)) { setImageError('Formato no permitido. Usa JPEG, PNG o WebP.'); return }
+    if (file.size > MAX_IMAGE_BYTES) { setImageError('La imagen supera el límite de 2 MB.'); return }
+    setImageError(''); setImageFeedback(`Imagen válida · ${(file.size / 1024).toFixed(0)} KB`); setImageFile(file); setRemoveCurrentImage(false)
   }
   const submit = (event) => {
     event.preventDefault()
@@ -210,6 +212,7 @@ function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
         </FormField>
         <div className="product-form-span-2 product-image-field">
           <span className="form-label">Imagen del catálogo</span>
+          <span className="product-image-status">Estado: {imageFile ? 'Nueva imagen seleccionada' : removeCurrentImage ? 'Imagen marcada para eliminar' : product?.imagen_referencia ? 'Imagen cargada' : 'Sin imagen'}</span>
           <div className="product-image-editor">
             {(previewUrl || (product?.imagen_referencia && !removeCurrentImage)) ? (
               <img className="product-image-preview" src={previewUrl || publicImageUrl(`/api/v1/public/catalog/images/${product.imagen_referencia}`)} alt={`Vista previa de ${product?.nombre || 'producto'}`} />
@@ -217,10 +220,10 @@ function ProductForm({ product, catalogs, busy, onCancel, onSubmit }) {
             <div className="product-image-controls">
               <label className="button button--secondary button--compact" htmlFor="product-image">{product?.imagen_referencia ? 'Reemplazar imagen' : 'Seleccionar imagen'}</label>
               <input id="product-image" className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={selectImage} />
-              {imageFile && <button className="button button--secondary button--compact" type="button" disabled={busy} onClick={() => { setImageFile(null); setImageError('') }}>Quitar selección</button>}
+              {imageFile && <button className="button button--secondary button--compact" type="button" disabled={busy} onClick={() => { setImageFile(null); setImageError(''); setImageFeedback('') }}>Quitar selección</button>}
               {product?.imagen_referencia && !imageFile && !removeCurrentImage && <button className="button button--danger button--compact" type="button" disabled={busy} onClick={() => setRemoveCurrentImage(true)}>Eliminar imagen</button>}
               {removeCurrentImage && <button className="button button--secondary button--compact" type="button" disabled={busy} onClick={() => setRemoveCurrentImage(false)}>Conservar imagen</button>}
-              {imageFile && <small>{imageFile.name} · {(imageFile.size / 1024).toFixed(1)} KB</small>}
+              {imageFeedback && <small className="product-image-feedback" role="status">{imageFeedback}</small>}
               <small>Opcional · JPEG, PNG o WebP · máximo 2 MB</small>
               {imageError && <small className="field-error" role="alert">{imageError}</small>}
             </div>
@@ -293,14 +296,15 @@ export function ProductsPage() {
       } catch (imageRequestError) {
         await loadProducts()
         if (imageRequestError?.status !== 401) {
-          const prefix = editingProduct
-            ? 'Los datos del producto se guardaron, pero no fue posible actualizar la imagen.'
-            : 'El producto fue creado, pero no fue posible guardar la imagen.'
-          setMutationError({ title: 'No se pudo guardar la imagen', message: `${prefix}${imageRequestError?.message ? ` ${imageRequestError.message}` : ''}` })
+          const cause = imageRequestError?.message ? ` Causa: ${imageRequestError.message}` : ' Causa: error de servidor.'
+          setMutationError({ title: 'No se pudo guardar la imagen', message: `El producto fue guardado, pero la imagen no pudo guardarse.${cause}` })
         }
         return
       }
-      setFeedback(`Producto ${editingProduct ? 'actualizado' : 'creado'} correctamente.`)
+      const imageSuccess = imageChange.file
+        ? editingProduct ? 'Imagen actualizada correctamente.' : 'Producto e imagen guardados correctamente.'
+        : imageChange.remove ? 'Imagen eliminada correctamente.' : `Producto ${editingProduct ? 'actualizado' : 'creado'} correctamente.`
+      setFeedback(imageSuccess)
       closeEditor(); await loadProducts()
     } catch (requestError) {
       setMutationError(createActionError(requestError, editingProduct ? 'No se pudieron guardar los cambios' : 'No se pudo crear el producto', 'No fue posible guardar el producto.'))
