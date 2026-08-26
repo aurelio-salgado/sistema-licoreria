@@ -1,294 +1,134 @@
-# Plan de tareas del proyecto
+# Estado final de implementación de LIQUORIX
 
-## Sprint 0 — Preparación y documentación
+Este documento resume el estado observable del repositorio al cierre del desarrollo. No sustituye los requerimientos, las reglas de negocio ni la documentación técnica detallada.
 
-- [x] Instalar Node.js y npm.
-- [x] Verificar MariaDB/MySQL de XAMPP.
-- [x] Crear la estructura principal del proyecto.
-- [x] Crear frontend con React y Vite.
-- [x] Ejecutar el frontend correctamente.
-- [x] Crear `AGENTS.md`.
-- [x] Crear `PROJECT_CONTEXT.md`.
-- [ ] Crear `TASKS.md`.
-- [ ] Crear `README.md`.
-- [ ] Crear `.gitignore`.
-- [ ] Crear documentos base en `docs/`.
-- [ ] Inicializar Git.
-- [ ] Crear el primer commit.
-- [ ] Ejecutar el primer análisis con Codex.
+## Convenciones
 
-## Sprint 1 — Infraestructura del backend
+- `[x]` Implementado: existe evidencia en código, esquema, pruebas o documentación operativa.
+- `[~]` Validación manual final: la implementación existe, pero debe comprobarse en el entorno de demostración.
+- `[ ]` Mejora futura no bloqueante: no forma parte de los requisitos pendientes del examen.
 
-- [ ] Inicializar proyecto Node.js en `backend`.
-- [ ] Instalar Express.
-- [ ] Instalar mysql2.
-- [ ] Instalar dotenv.
-- [ ] Instalar Helmet.
-- [ ] Instalar CORS.
-- [ ] Instalar Morgan o un sistema de logging.
-- [ ] Configurar nodemon.
-- [ ] Crear estructura modular.
-- [ ] Crear archivo `app.js`.
-- [ ] Crear archivo `server.js`.
-- [ ] Crear manejo centralizado de errores.
-- [ ] Crear endpoint `GET /api/v1/health`.
-- [ ] Crear archivo `.env.example`.
-- [ ] Crear conexión con MariaDB/MySQL.
-- [ ] Probar comunicación entre frontend y backend.
+## Implementado
 
-## Sprint 2 — Base de datos
+### Infraestructura y persistencia
 
-- [ ] Crear base de datos `sistema_licoreria`.
-- [ ] Crear usuario limitado para la aplicación.
-- [ ] Definir tablas definitivas.
-- [ ] Crear `database/schema.sql`.
-- [ ] Crear `database/seed.sql`.
-- [ ] Crear claves primarias.
-- [ ] Crear claves foráneas.
-- [ ] Crear restricciones únicas.
-- [ ] Crear índices.
-- [ ] Crear roles iniciales.
-- [ ] Crear permisos iniciales.
-- [ ] Crear métodos de pago iniciales.
-- [ ] Crear cliente “Consumidor final”.
-- [ ] Probar creación completa de la base de datos.
-- [ ] Documentar el modelo relacional.
+- [x] Frontend React con Vite y rutas públicas y protegidas.
+- [x] Backend Node.js con Express y API REST bajo `/api/v1`.
+- [x] Organización modular por rutas, controladores, servicios, repositorios y validaciones.
+- [x] Pool MariaDB/MySQL mediante `mysql2`, errores centralizados y endpoint de salud.
+- [x] Helmet, CORS controlado, variables de entorno y logging HTTP.
+- [x] Esquema InnoDB/`utf8mb4` con PK, FK, restricciones, índices y valores `DECIMAL`.
+- [x] Seed de roles, permisos, métodos de pago, configuración y Consumidor final.
+- [x] Scripts `demo-reset.sql` y `demo-sales.sql` con preflight, transacción y validaciones finales.
 
-## Sprint 3 — Autenticación
+### Autenticación, usuarios y permisos
 
-- [ ] Crear tabla y datos iniciales de usuarios.
-- [ ] Crear hash de contraseñas con bcrypt.
-- [ ] Implementar inicio de sesión.
-- [ ] Implementar JWT.
-- [ ] Implementar expiración de sesión.
-- [ ] Implementar cierre de sesión.
-- [ ] Implementar bloqueo temporal por intentos fallidos.
-- [ ] Crear middleware de autenticación.
-- [ ] Crear validaciones de credenciales.
-- [ ] Crear interfaz de login.
-- [ ] Probar accesos válidos e inválidos.
+- [x] Login con bcrypt, JWT con expiración y `session_epoch` persistente.
+- [x] Intentos fallidos, bloqueo temporal y validación del usuario vigente en cada solicitud.
+- [x] Logout frontend, restauración de sesión y manejo global de `401`.
+- [x] Usuarios: creación, consulta, edición, estado lógico y asignación de rol.
+- [x] Roles Administrador, Vendedor y Consulta, catálogo de permisos y asignación a roles.
+- [x] Autorización autoritativa en backend y visibilidad frontend basada en permisos.
 
-## Sprint 4 — Usuarios, roles y permisos
+### Catálogos, productos y directorios
 
-- [ ] CRUD de usuarios.
-- [ ] Desactivación lógica de usuarios.
-- [ ] Gestión de roles.
-- [ ] Gestión de permisos.
-- [ ] Asignación de roles.
-- [ ] Asignación de permisos.
-- [ ] Middleware de autorización.
-- [ ] Protección de endpoints.
-- [ ] Protección de rutas del frontend.
-- [ ] Pruebas con Administrador.
-- [ ] Pruebas con Vendedor.
-- [ ] Pruebas con Consulta.
+- [x] Categorías, marcas y unidades: listado, búsqueda, creación, edición y estado lógico.
+- [x] Logos de marcas: carga, firma/MIME/tamaño, reemplazo, eliminación y lectura controlada.
+- [x] Productos: búsqueda, filtros, paginación, precios, costo, mínimo y estado lógico.
+- [x] Existencia fuera del CRUD de productos y costo promedio protegido con inventario.
+- [x] Imágenes de productos con referencia segura, validación, reemplazo y eliminación.
+- [x] Clientes y proveedores con CRUD lógico, filtros, validaciones y paginación.
+- [x] Consumidor final protegido contra modificación y desactivación.
 
-## Sprint 5 — Catálogos
+### Compras e inventario
 
-### Categorías
+- [x] Compras en borrador con encabezado y líneas editables.
+- [x] Totales definitivos calculados en backend.
+- [x] Confirmación transaccional, aumento de existencia y costo promedio ponderado.
+- [x] Anulación controlada y reversión segura de inventario.
+- [x] Existencias, inventario bajo y movimientos consultables.
+- [x] Ajustes positivos y negativos con motivo, usuario y trazabilidad.
+- [x] Prevención de inventario negativo y referencias de movimientos.
 
-- [ ] Listar categorías.
-- [ ] Crear categoría.
-- [ ] Editar categoría.
-- [ ] Desactivar categoría.
-- [ ] Validar nombre único.
+### Ventas, pagos, facturación y caja
 
-### Marcas
+- [x] Preparación de ventas con cliente y detalle editable.
+- [x] Validación backend de existencia, unidades, descuentos, impuestos y configuración.
+- [x] Pagos en efectivo, tarjeta, transferencia y combinados; monto recibido y cambio.
+- [x] Confirmación transaccional de venta, pagos, inventario, caja y bitácora.
+- [x] Costo histórico, factura numerada y comprobante imprimible.
+- [x] Consulta y anulación con restauración de inventario y compensación de efectivo.
+- [x] Apertura de caja, una caja abierta por usuario, ingresos y egresos.
+- [x] Movimientos de ventas/anulaciones, monto esperado, conteo, cierre y diferencia.
+- [x] Integración con `control_caja_activo` y estado operativo de ventas.
 
-- [ ] Listar marcas.
-- [ ] Crear marca.
-- [ ] Editar marca.
-- [ ] Desactivar marca.
+### Dashboard, reportes y bitácora
 
-### Unidades de medida
+- [x] Dashboard básico según permisos, indicadores diarios y ventas recientes.
+- [x] Tres gráficos con filtros por período y vendedor.
+- [x] Ocho reportes: ventas por fechas, detalle de ventas, compras por proveedor, inventario, stock bajo, más vendidos, ventas por vendedor y utilidad bruta.
+- [x] Filtros parametrizados, paginación y agregados que excluyen anulaciones por defecto.
+- [x] Exportación XLSX hasta 10 000 filas y prevención de formula injection.
+- [x] Bitácora de solo lectura con filtros, entidad, usuario, IP, resultado y datos saneados.
 
-- [ ] Listar unidades.
-- [ ] Crear unidad.
-- [ ] Editar unidad.
-- [ ] Desactivar unidad.
+### Configuración, respaldos y catálogo público
 
-### Productos
+- [x] Settings con whitelist visible/editable y validación de claves autorizadas.
+- [x] `jwt_session_epoch` oculto y no editable desde Settings.
+- [x] Creación, consulta y descarga controlada de respaldos privados.
+- [x] SHA-256, retención, preflight, respaldo preventivo y restauración con mantenimiento.
+- [x] Invalidación global de sesiones y recuperación manual documentada.
+- [x] Catálogo público sin JWT con búsqueda, categorías, marcas, paginación e imágenes.
+- [x] Proyección sin costos, existencias exactas, proveedores ni datos administrativos.
+- [x] Placeholder, navegación pública, diseño adaptable y headers de imagen controlados.
 
-- [ ] Listar productos.
-- [ ] Crear producto.
-- [ ] Editar producto.
-- [ ] Desactivar producto.
-- [ ] Buscar por nombre.
-- [ ] Buscar por código.
-- [ ] Buscar por código de barras.
-- [ ] Filtrar por categoría.
-- [ ] Filtrar por marca.
-- [ ] Implementar paginación.
-- [ ] Validar precio.
-- [ ] Validar costo.
-- [ ] Validar existencia mínima.
-- [ ] Impedir modificación directa de existencias.
+### Pruebas y documentación
 
-### Clientes
+- [x] Pruebas backend de autenticación, permisos, sesión, imágenes, catálogo público, compras, inventario, ventas, caja, dashboard, reportes y respaldos.
+- [x] Pruebas frontend de utilidades críticas existentes.
+- [x] Scripts de check, lint y build.
+- [x] Requerimientos, reglas, modelo de datos, API, arquitectura, estándares, implementación, pruebas y recuperación documentados.
+- [x] README de preparación, configuración y ejecución.
 
-- [ ] Listar clientes.
-- [ ] Crear cliente.
-- [ ] Editar cliente.
-- [ ] Desactivar cliente.
-- [ ] Usar cliente “Consumidor final”.
+## Validación manual final
 
-### Proveedores
+- [~] Comparar la base de defensa con `database/schema.sql`, incluidas `marcas.imagen_referencia`, `productos.imagen_referencia`, `respaldos` y `jwt_session_epoch`.
+- [~] Crear una base temporal desde `schema.sql` y `seed.sql` y comprobar FK y restricciones.
+- [~] Ejecutar los scripts demo en una base temporal y conservar sus resultados finales.
+- [~] Probar Administrador, Vendedor y Consulta con la matriz real de permisos.
+- [~] Ensayar compra, ajuste, caja, venta, pago combinado, anulación y cierre.
+- [~] Abrir una exportación XLSX real y revisar el comprobante impreso.
+- [~] Revisar `/catalog` y pantallas administrativas en 360, 480, 768 px y escritorio, con teclado y foco visible.
+- [~] Ensayar respaldo/restauración solo contra una base temporal siguiendo `docs/09-recuperacion-desastres.md`.
+- [~] Confirmar que un JWT previo es rechazado después de restaurar o rotar el epoch.
+- [~] Preparar capturas, dataset estable, respaldo ensayado y guion de demostración.
 
-- [ ] Listar proveedores.
-- [ ] Crear proveedor.
-- [ ] Editar proveedor.
-- [ ] Desactivar proveedor.
+## Mejoras futuras / no bloqueantes
 
-## Sprint 6 — Compras e inventario
+- [ ] Ampliar pruebas automatizadas de interfaz y flujos integrados con una base temporal.
+- [ ] Incorporar limitación global o por IP adicional al bloqueo por cuenta.
+- [ ] Optimizar recursos gráficos y bundles si el despliegue lo requiere.
+- [ ] Evaluar una versión explícita del esquema y verificaciones posrestauración más extensas.
+- [ ] Evaluar la columna reservada `configuracion.imagen_referencia`; actualmente no participa en Settings.
 
-### Compras
+## Trazabilidad académica resumida
 
-- [ ] Crear compra en borrador.
-- [ ] Agregar productos a la compra.
-- [ ] Calcular subtotal.
-- [ ] Calcular descuento.
-- [ ] Calcular impuesto.
-- [ ] Calcular total.
-- [ ] Confirmar compra.
-- [ ] Aumentar existencias.
-- [ ] Registrar movimientos de inventario.
-- [ ] Usar transacción de base de datos.
-- [ ] Consultar compras.
-- [ ] Filtrar compras por fecha.
-- [ ] Filtrar compras por proveedor.
-- [ ] Anular compra de forma controlada.
-
-### Inventario
-
-- [ ] Consultar existencias.
-- [ ] Consultar movimientos.
-- [ ] Registrar ajuste positivo.
-- [ ] Registrar ajuste negativo.
-- [ ] Solicitar motivo del ajuste.
-- [ ] Impedir existencias negativas.
-- [ ] Mostrar productos con inventario bajo.
-- [ ] Validar consistencia de existencias.
-
-## Sprint 7 — Ventas y facturación
-
-- [ ] Crear punto de venta.
-- [ ] Buscar productos.
-- [ ] Agregar productos al carrito.
-- [ ] Validar existencias.
-- [ ] Calcular descuentos.
-- [ ] Calcular impuestos.
-- [ ] Calcular total en backend.
-- [ ] Registrar método de pago.
-- [ ] Registrar pago combinado.
-- [ ] Calcular cambio.
-- [ ] Confirmar venta mediante transacción.
-- [ ] Reducir inventario.
-- [ ] Registrar movimientos de inventario.
-- [ ] Guardar costo histórico.
-- [ ] Generar número de factura.
-- [ ] Generar comprobante imprimible.
-- [ ] Consultar ventas.
-- [ ] Filtrar ventas.
-- [ ] Anular venta.
-- [ ] Restaurar inventario al anular.
-- [ ] Registrar motivo de anulación.
-
-## Sprint 8 — Caja
-
-- [ ] Abrir caja.
-- [ ] Registrar monto inicial.
-- [ ] Impedir dos cajas abiertas por usuario.
-- [ ] Registrar ingresos.
-- [ ] Registrar egresos.
-- [ ] Registrar ventas en caja.
-- [ ] Calcular monto esperado.
-- [ ] Registrar monto contado.
-- [ ] Calcular diferencia.
-- [ ] Cerrar caja.
-- [ ] Consultar historial de cajas.
-- [ ] Generar reporte de cierre.
-
-## Sprint 9 — Dashboard y reportes
-
-### Dashboard
-
-- [ ] Mostrar ventas del día.
-- [ ] Mostrar número de ventas.
-- [ ] Mostrar productos con inventario bajo.
-- [ ] Mostrar productos más vendidos.
-- [ ] Mostrar ventas recientes.
-- [ ] Crear gráfico de ventas por período.
-- [ ] Crear gráfico de productos más vendidos.
-- [ ] Crear gráfico de ventas por categoría.
-
-### Reportes
-
-- [ ] Reporte de ventas por rango de fechas.
-- [ ] Reporte maestro-detalle de ventas.
-- [ ] Reporte de compras por proveedor.
-- [ ] Reporte de inventario actual.
-- [ ] Reporte de productos con inventario bajo.
-- [ ] Reporte de productos más vendidos.
-- [ ] Reporte de ventas por vendedor.
-- [ ] Reporte de utilidad bruta estimada.
-- [ ] Exportar reportes a Excel.
-- [ ] Implementar filtros parametrizados.
-
-## Sprint 10 — Bitácora y respaldos
-
-### Bitácora
-
-- [ ] Registrar inicio de sesión.
-- [ ] Registrar intentos fallidos.
-- [ ] Registrar creación y modificación de usuarios.
-- [ ] Registrar cambios de precios.
-- [ ] Registrar ajustes de inventario.
-- [ ] Registrar anulaciones.
-- [ ] Registrar respaldos.
-- [ ] Registrar restauraciones.
-- [ ] Crear interfaz de consulta.
-
-### Respaldos
-
-- [ ] Crear respaldo desde el backend.
-- [ ] Guardar respaldo fuera de carpetas públicas.
-- [ ] Registrar información del respaldo.
-- [ ] Validar permisos.
-- [ ] Crear restauración controlada.
-- [ ] Crear respaldo previo a una restauración.
-- [ ] Registrar resultado de restauración.
-- [ ] Probar recuperación de la base.
-
-## Sprint 11 — Pruebas y calidad
-
-- [ ] Pruebas de autenticación.
-- [ ] Pruebas de autorización.
-- [ ] Pruebas de validación.
-- [ ] Pruebas de CRUD.
-- [ ] Pruebas de compras.
-- [ ] Pruebas de ventas.
-- [ ] Pruebas de inventario.
-- [ ] Pruebas de caja.
-- [ ] Pruebas de reportes.
-- [ ] Pruebas de respaldos.
-- [ ] Pruebas de transacciones.
-- [ ] Revisión de consultas parametrizadas.
-- [ ] Revisión de exposición de secretos.
-- [ ] Revisión de mensajes de error.
-- [ ] Revisión de dependencias.
-
-## Sprint 12 — Documentación y entrega
-
-- [ ] Completar README.
-- [ ] Manual técnico.
-- [ ] Manual de usuario.
-- [ ] Diccionario de datos.
-- [ ] Documentación de la API.
-- [ ] Diagrama entidad-relación.
-- [ ] Diagrama de arquitectura.
-- [ ] Evidencias de pruebas.
-- [ ] Guía de instalación.
-- [ ] Guía de respaldo y restauración.
-- [ ] Preparar datos de demostración.
-- [ ] Preparar presentación final.
-- [ ] Revisar proyecto completo.
+| Requisito | Evidencia principal |
+|---|---|
+| Autenticación y sesiones | Módulo `auth`, `authenticate` y servicio `sessionEpoch` |
+| Roles y permisos | Módulo `access`, `requirePermission` y rutas protegidas frontend |
+| Usuarios | Módulo `users` |
+| Catálogos y productos | Módulos `categories`, `brands`, `units` y `products` |
+| Clientes y proveedores | Módulos `clients` y `suppliers` |
+| Compras | Módulo `purchases` |
+| Inventario y ajustes | Módulo `inventory` |
+| Ventas, pagos y facturación | Módulo `sales` |
+| Caja | Módulo `cash` |
+| Dashboard | Módulo `dashboard` |
+| Ocho reportes y XLSX | Módulo `reports` |
+| Bitácora | Módulo `audit` |
+| Configuración | Módulo `settings` |
+| Respaldos y recuperación | Módulo `backups`, `sessionEpoch` y guía de recuperación |
+| Catálogo público | Módulo `publicCatalog` y ruta `/catalog` |
+| Persistencia y demo | `schema.sql`, `seed.sql`, `demo-reset.sql` y `demo-sales.sql` |
+| Pruebas | Archivos `*.test.js` y `docs/08-pruebas.md` |

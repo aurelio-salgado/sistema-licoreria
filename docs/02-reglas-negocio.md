@@ -7,8 +7,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | Reglas de negocio |
-| Versión | 1.0 |
-| Estado | Documento formal para validación |
+| Versión | 1.1 |
+| Estado | Documento vigente del sistema implementado |
 | Proyecto | Sistema web de control de inventario y facturación para una licorería |
 | Ámbito | Una sola sucursal |
 | Documento fuente | `docs/01-requerimientos.md`, versión 1.1 |
@@ -83,11 +83,11 @@ Cada regla utiliza el formato `RN-MOD-NNN`, donde `RN` significa regla de negoci
 
 ### RN-AUT-003 — Bloqueo temporal por intentos fallidos
 
-**Descripción:** Los intentos fallidos consecutivos producirán un bloqueo temporal conforme al límite y duración configurados.
+**Descripción:** Cinco intentos fallidos consecutivos producirán un bloqueo temporal de quince minutos.
 
-**Aplica a:** Inicio de sesión y configuración de seguridad.
+**Aplica a:** Inicio de sesión y estado de acceso del usuario.
 
-**Validación:** El sistema contará los intentos fallidos, rechazará nuevas autenticaciones durante el bloqueo y registrará los eventos en bitácora.
+**Validación:** El sistema contará los intentos fallidos, aplicará el bloqueo al alcanzar el quinto intento, rechazará nuevas autenticaciones durante quince minutos y registrará los eventos en bitácora. Un inicio exitoso restablecerá el contador y el bloqueo.
 
 ### RN-AUT-004 — Protección de credenciales y sesiones
 
@@ -353,7 +353,7 @@ condicionada a validación multipart autorizada y al permiso `productos.editar`.
 
 ### RN-PRV-003 — Identificación fiscal única cuando exista
 
-**Descripción:** La identificación fiscal será opcional hasta definir los datos obligatorios, pero no podrá duplicarse cuando se proporcione.
+**Descripción:** La identificación fiscal será opcional, pero no podrá duplicarse cuando se proporcione.
 
 **Aplica a:** Proveedores.
 
@@ -842,7 +842,7 @@ UUID, y los JWT anteriores son rechazados. El procedimiento completo se define e
 
 **Aplica a:** Configuración y ventas.
 
-**Validación:** El backend rechazará valores fuera de los rangos que se definan formalmente.
+**Validación:** El backend rechazará valores menores que 0, mayores que 100 o con más de dos decimales.
 
 ### RN-CON-004 — Numeración sin duplicados
 
@@ -858,7 +858,7 @@ UUID, y los JWT anteriores son rechazados. El procedimiento completo se define e
 
 **Aplica a:** Configuración general, roles y permisos.
 
-**Validación:** El backend rechazará cambios no autorizados y no asumirá porcentajes que no hayan sido aprobados formalmente.
+**Validación:** El backend rechazará cambios no autorizados y validará la tasa de impuesto y el porcentaje máximo de descuento entre 0 y 100, con un máximo de dos decimales.
 
 ## 7. Reglas críticas transversales
 
@@ -873,24 +873,30 @@ Las siguientes condiciones tienen precedencia en todos los módulos relacionados
 7. **Protección de información:** no se almacenan ni exponen contraseñas, tokens, datos completos de tarjetas o rutas internas sensibles.
 8. **Vigencia histórica:** las configuraciones nuevas no alteran operaciones ya confirmadas.
 
-## 8. Decisiones pendientes
+## 8. Decisiones vigentes y pendientes reales
 
-Antes del diseño detallado o de las pruebas definitivas deberán aprobarse:
+### 8.1 Decisiones vigentes
 
-1. La tasa o las tasas iniciales de impuesto, sus rangos válidos y reglas de redondeo.
-2. Los tipos, límites y rangos válidos de descuento.
-3. La matriz exacta de permisos de Administrador, Vendedor y Consulta.
-4. El límite de intentos fallidos y la duración del bloqueo temporal.
-5. Los datos obligatorios y reglas de normalización para clientes y proveedores.
-6. El criterio de comparación para nombres de categorías, nombres de usuario, correos, códigos e identificaciones fiscales.
-7. El formato, la serie, la numeración inicial y la presentación del comprobante interno.
-8. El tratamiento detallado en caja de anulaciones y pagos no efectivos.
-9. Los métodos que exigirán referencia y el formato válido de cada referencia.
-10. La presentación avanzada que pudiera añadirse posteriormente a los formatos de reportes ya aprobados.
-11. Los JWT incluyen el `jwt_session_epoch` interno vigente; al restaurar se rota después del import y antes de abandonar mantenimiento.
-12. El mecanismo exacto para impedir operaciones incompatibles durante una restauración.
-13. Los objetivos cuantitativos de disponibilidad y recuperación.
-14. La eventual adaptación del comprobante interno a requisitos fiscales, si se aprueba ese alcance en el futuro.
+Las decisiones siguientes ya forman parte de las reglas de la versión actual:
+
+1. **Impuestos:** `impuesto_activo` determina si se aplica impuesto a operaciones nuevas. `tasa_impuesto` admite valores de 0 a 100 con un máximo de dos decimales. La carga inicial mantiene el impuesto desactivado y la tasa en cero hasta que la administración establezca otro valor autorizado.
+2. **Descuentos:** `descuento_maximo` es un porcentaje de 0 a 100, con un máximo de dos decimales, que limita el descuento monetario por línea de venta. No limita descuentos concedidos por proveedores en compras.
+3. **Matriz inicial de acceso:** Administrador recibe todos los permisos disponibles. Vendedor recibe los permisos operativos aprobados para productos, clientes, ventas, caja, dashboard básico e inventario. Consulta recibe permisos de lectura para productos, clientes, inventario, ventas, reportes y dashboard. Los permisos efectivos, no el nombre del rol, son la autoridad final.
+4. **Bloqueo de autenticación:** el quinto intento fallido consecutivo bloquea la cuenta durante quince minutos. Un inicio exitoso restablece los intentos y el bloqueo.
+5. **Clientes y proveedores:** los campos obligatorios y opcionales son los aceptados por sus validaciones vigentes; la identificación del cliente y la identificación fiscal del proveedor son opcionales y únicas cuando se informan.
+6. **Unicidad:** los nombres de usuario, correos, códigos e identificaciones sujetos a índices únicos se comparan conforme a la colación configurada de MariaDB y a la normalización aplicada por el backend.
+7. **Comprobantes:** una venta confirmada utiliza `serie_comprobante` y `siguiente_numero_comprobante`. La serie admite letras, números y guiones, no puede permanecer como `SIN_CONFIGURAR` al confirmar, y la secuencia debe ser un entero igual o mayor que uno. La confirmación asigna un número único e incrementa la secuencia; una anulación no reutiliza el número.
+8. **Caja:** `control_caja_activo` decide si confirmar una venta exige una caja abierta del vendedor. Solo puede existir una caja abierta por usuario. Los pagos en efectivo generan el efecto correspondiente; tarjeta y transferencia no aumentan el efectivo esperado. Las anulaciones compensan únicamente el componente efectivo cuando corresponde y conservan los movimientos históricos.
+9. **Pagos y referencias:** Efectivo no requiere referencia y sí requiere monto recibido; Tarjeta y Transferencia requieren referencia. La referencia opcional o exigida admite hasta 120 caracteres. El cambio se calcula exclusivamente sobre efectivo y los pagos no efectivos no aceptan `monto_recibido`.
+10. **Sesiones después de restaurar:** los JWT incluyen el `jwt_session_epoch` vigente. Una restauración controlada rota el epoch después del import y antes de finalizar correctamente; una recuperación manual debe rotarlo antes de reiniciar el servicio. Los JWT anteriores quedan invalidados.
+11. **Respaldos:** los respaldos se almacenan fuera de contenido público, conservan metadata y SHA-256, y se limita a diez la cantidad de respaldos manuales exitosos disponibles. Toda restauración exige confirmación exacta, respaldo preventivo válido y permiso explícito.
+12. **Mantenimiento durante restauración:** una restauración solo comienza cuando no existen operaciones incompatibles activas. Mientras se ejecuta, las solicitudes de negocio quedan rechazadas y el sistema no abandona mantenimiento después de iniciar el import hasta completar la rotación de sesiones; esta regla corresponde al despliegue actual de una sola instancia del backend.
+
+### 8.2 Pendientes reales no bloqueantes
+
+1. Permanecen por definir los objetivos cuantitativos formales de disponibilidad, RTO y RPO. El sistema dispone de respaldo y recuperación, pero el repositorio no establece esas métricas académicas u organizativas.
+2. La presentación avanzada adicional de reportes no está definida y se considera una mejora futura, no un requisito pendiente de la versión actual.
+3. La adaptación del comprobante interno a requisitos fiscales permanece fuera del alcance hasta que exista una aprobación formal; el comprobante actual no constituye facturación electrónica fiscal.
 
 ## 9. Matriz resumida de reglas críticas
 
@@ -949,6 +955,6 @@ Las acciones críticas deberán generar trazabilidad suficiente sin contraseñas
 
 La restauración deberá probarse con archivos válidos e inválidos, respaldo preventivo, resultado auditado y bloqueo de operaciones incompatibles.
 
-### CV-011 — Aceptación de decisiones pendientes
+### CV-011 — Aceptación de parámetros abiertos
 
-Las reglas dependientes de parámetros aún no definidos solo podrán considerarse completamente aceptadas después de documentar y aprobar dichos parámetros.
+Los objetivos cuantitativos de disponibilidad, RTO y RPO solo podrán considerarse formalmente aceptados después de que la organización los defina, documente y apruebe. Su ausencia no cambia las reglas funcionales implementadas ni convierte las mejoras futuras en requisitos de la versión actual.
