@@ -82,6 +82,7 @@ Si la consulta `SELECT 1` falla, responde `503` con un mensaje público saneado.
 | --- | --- | --- | --- |
 | POST | `/auth/login` | Público | Inicia sesión. |
 | GET | `/auth/me` | JWT | Devuelve la identidad vigente reconstruida por `authenticate`. |
+| POST | `/auth/logout` | JWT | Autoriza el cierre voluntario si el usuario no tiene caja abierta. |
 
 ### `POST /auth/login`
 
@@ -115,6 +116,30 @@ Ambos campos son obligatorios; `nombre_usuario` admite hasta 80 caracteres. Un u
 ```
 
 Nunca se devuelve `password_hash`. `/auth/me` responde `{ "user": { "id_usuario", "nombre_usuario", "roles" } }`.
+
+### `POST /auth/logout`
+
+No recibe body funcional ni identificadores de usuario. La identidad se obtiene exclusivamente del JWT validado. Si el usuario no tiene una caja abierta, responde `200` y el frontend puede eliminar su sesión local:
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Sesión cerrada correctamente"
+  }
+}
+```
+
+Si existe una caja con estado `abierta` asociada al usuario autenticado, responde `409`:
+
+```json
+{
+  "success": false,
+  "message": "No puedes cerrar sesión porque tienes una caja abierta. Debes cerrar la caja antes de salir del sistema."
+}
+```
+
+El rechazo no cierra la caja, no invalida el JWT y el frontend conserva la sesión. Un `401` indica que la sesión ya no es válida y permite la limpieza local correspondiente.
 
 ## 4. Usuarios
 

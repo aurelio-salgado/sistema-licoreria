@@ -112,6 +112,11 @@ async function getCurrentCash(userId) {
   return rows[0];
 }
 
+async function hasOpenCash(userId) {
+  const rows = await cashRepository.findOpenByUser(pool, userId);
+  return rows.length > 0;
+}
+
 async function listCash(rawQuery, userId) {
   const filters = validateListQuery(rawQuery);
   if (filters.requestedUser !== null && filters.requestedUser !== userId)
@@ -240,6 +245,7 @@ module.exports = {
   createMovement,
   getCash,
   getCurrentCash,
+  hasOpenCash,
   listCash,
   openCash,
 };

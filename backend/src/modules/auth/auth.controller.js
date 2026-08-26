@@ -46,6 +46,20 @@ async function login(req, res, next) {
   }
 }
 
+async function logout(req, res, next) {
+  try {
+    await authService.logout(req.user.id_usuario);
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Sesión cerrada correctamente',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 function getCurrentUser(req, res) {
   res.status(200).json({
     success: true,
@@ -55,4 +69,4 @@ function getCurrentUser(req, res) {
   });
 }
 
-module.exports = { getCurrentUser, login };
+module.exports = { getCurrentUser, login, logout };

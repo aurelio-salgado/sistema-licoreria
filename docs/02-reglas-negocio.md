@@ -99,11 +99,11 @@ Cada regla utiliza el formato `RN-MOD-NNN`, donde `RN` significa regla de negoci
 
 ### RN-AUT-005 — Protección y cierre de sesión
 
-**Descripción:** Toda operación protegida requerirá autenticación válida; al cerrar sesión, el cliente invalidará o eliminará la sesión utilizada y no podrá reutilizarla desde dicho cliente.
+**Descripción:** Toda operación protegida requerirá autenticación válida. El cierre voluntario de sesión será rechazado cuando el usuario autenticado tenga una caja abierta; cerrar sesión nunca cerrará la caja automáticamente. Cuando no exista una caja abierta, el cliente podrá eliminar la sesión local y no reutilizarla.
 
 **Aplica a:** Sesiones, frontend y operaciones protegidas.
 
-**Validación:** Una solicitud sin autenticación válida será rechazada y, después del cierre, el cliente exigirá una nueva autenticación.
+**Validación:** El backend comprobará la caja mediante la identidad autenticada. Si está abierta responderá con conflicto y el cliente conservará token, estado y navegación; después de un cierre permitido exigirá una nueva autenticación. Cerrar el navegador no altera el estado persistente de la caja.
 
 ### 6.2 Usuarios
 

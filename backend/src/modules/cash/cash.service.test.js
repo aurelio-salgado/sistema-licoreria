@@ -104,6 +104,19 @@ test('consulta caja actual y ausencia devuelve 404', async () => {
   );
 });
 
+test('consulta booleana de caja abierta reutiliza el usuario recibido', async () => {
+  let receivedUserId;
+  repo.findOpenByUser = async (_executor, userId) => {
+    receivedUserId = userId;
+    return [{ id_caja: 12, estado: 'abierta' }];
+  };
+  assert.equal(await service.hasOpenCash(9), true);
+  assert.equal(receivedUserId, 9);
+
+  repo.findOpenByUser = async () => [];
+  assert.equal(await service.hasOpenCash(9), false);
+});
+
 test('historial propio y rechazo de filtro de usuario ajeno', async () => {
   scenario();
   const history = await service.listCash({ page: '1', limit: '20' }, 9);

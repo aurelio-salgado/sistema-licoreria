@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { ErrorDialog } from '../components/CatalogUi'
 import { navigationItems } from '../navigation/navigation'
 
 function LiquorixMark() {
@@ -18,6 +19,8 @@ export function AppLayout() {
   const navigationRef = useRef(null)
   const pendingScrollTopRef = useRef(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
   const { user, roles, hasPermission, logout } = useAuth()
   const visibleItems = navigationItems.filter((item) => hasPermission(item.permission))
   const displayName = user?.nombre_completo || user?.nombre_usuario || 'Usuario'
@@ -26,6 +29,20 @@ export function AppLayout() {
   const handleNavigation = () => {
     pendingScrollTopRef.current = navigationRef.current?.scrollTop ?? null
     setIsMenuOpen(false)
+  }
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    setLogoutError('')
+    try {
+      await logout()
+    } catch (error) {
+      setLogoutError(
+        error.message || 'No fue posible cerrar la sesión. Inténtalo de nuevo.',
+      )
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   useLayoutEffect(() => {
@@ -149,8 +166,8 @@ export function AppLayout() {
               <strong>{displayName}</strong>
               <span>{roleLabel}</span>
             </div>
-            <button className="button button--ghost logout-button" type="button" onClick={logout}>
-              Cerrar sesión
+            <button className="button button--ghost logout-button" type="button" disabled={isLoggingOut} onClick={handleLogout}>
+              {isLoggingOut ? 'Cerrando…' : 'Cerrar sesión'}
             </button>
           </div>
         </header>
@@ -159,6 +176,12 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <ErrorDialog
+        open={Boolean(logoutError)}
+        title="No es posible cerrar sesión"
+        message={logoutError}
+        onClose={() => setLogoutError('')}
+      />
     </div>
   )
 }

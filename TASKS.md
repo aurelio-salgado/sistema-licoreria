@@ -25,7 +25,7 @@ Este documento resume el estado observable del repositorio al cierre del desarro
 
 - [x] Login con bcrypt, JWT con expiración y `session_epoch` persistente.
 - [x] Intentos fallidos, bloqueo temporal y validación del usuario vigente en cada solicitud.
-- [x] Logout frontend, restauración de sesión y manejo global de `401`.
+- [x] Logout validado por backend, bloqueo con caja abierta, restauración de sesión y manejo global de `401`.
 - [x] Usuarios: creación, consulta, edición, estado lógico y asignación de rol.
 - [x] Roles Administrador, Vendedor y Consulta, catálogo de permisos y asignación a roles.
 - [x] Autorización autoritativa en backend y visibilidad frontend basada en permisos.

@@ -38,10 +38,23 @@ export function AuthProvider({ children }) {
     setIsInitializing(false)
   }, [])
 
-  const logout = useCallback(() => {
+  const terminateSession = useCallback(() => {
     clearSession()
     navigate('/login', { replace: true, state: { loggedOut: true } })
   }, [clearSession, navigate])
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout', undefined, { handleUnauthorized: false })
+      terminateSession()
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        terminateSession()
+        return
+      }
+      throw error
+    }
+  }, [terminateSession])
 
   const restoreSession = useCallback(async () => {
     const storedSession = readStoredSession()
@@ -75,7 +88,7 @@ export function AuthProvider({ children }) {
       setSession(refreshedSession)
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        logout()
+        terminateSession()
       } else {
         setSession(null)
         setRestoreError(
@@ -85,13 +98,13 @@ export function AuthProvider({ children }) {
     } finally {
       setIsInitializing(false)
     }
-  }, [clearSession, logout])
+  }, [clearSession, terminateSession])
 
   useEffect(() => {
     restoreSession()
   }, [restoreSession])
 
-  useEffect(() => subscribeToUnauthorized(logout), [logout])
+  useEffect(() => subscribeToUnauthorized(terminateSession), [terminateSession])
 
   useEffect(() => {
     const synchronizeSession = () => {

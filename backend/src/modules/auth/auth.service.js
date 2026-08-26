@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../../config/database');
 const env = require('../../config/env');
 const authRepository = require('./auth.repository');
+const cashService = require('../cash/cash.service');
 const sessionEpoch = require('../../services/sessionEpoch');
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -128,4 +129,14 @@ async function login({ username, password, ipAddress }) {
   }
 }
 
-module.exports = { login };
+async function logout(userId) {
+  if (await cashService.hasOpenCash(userId)) {
+    const error = new Error(
+      'No puedes cerrar sesión porque tienes una caja abierta. Debes cerrar la caja antes de salir del sistema.',
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+}
+
+module.exports = { login, logout };
