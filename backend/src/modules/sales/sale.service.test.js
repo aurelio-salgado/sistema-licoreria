@@ -61,7 +61,7 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
     repo.listItems = async () => [];
     repo.listPayments = async () => [];
     repo.discountPolicy = async () => ({ valor: '10.00' });
-    const sale = await service.getSale('31');
+    const sale = await service.getSale('31', { userId: 7, canSupervise: true });
     assert.deepEqual(sale.payments, []);
     assert.deepEqual(sale.discount_policy, { max_percent: '10.00' });
   });
@@ -134,7 +134,7 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
     repo.findById = async () => ({ id_venta: 44, estado: 'completada' });
     repo.listItems = async () => [];
     repo.listPayments = async () => payments;
-    const sale = await service.getSale('44');
+    const sale = await service.getSale('44', { userId: 7, canSupervise: true });
     assert.deepEqual(sale.payments, payments);
     assert.equal(Object.hasOwn(sale, 'discount_policy'), false);
   });
@@ -148,7 +148,7 @@ test('contratos de lectura de métodos y pagos de ventas', async (t) => {
     };
     repo.listPayments = repo.listItems;
     await assert.rejects(
-      service.getSale('404'),
+      service.getSale('404', { userId: 7, canSupervise: true }),
       (error) => error.statusCode === 404 && error.message === 'Venta no encontrada',
     );
     assert.equal(queriedChildren, false);

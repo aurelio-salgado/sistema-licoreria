@@ -58,8 +58,10 @@ Este documento resume el estado observable del repositorio al cierre del desarro
 - [x] Confirmación transaccional de venta, pagos, inventario, caja y bitácora.
 - [x] Costo histórico, factura numerada y comprobante imprimible.
 - [x] Consulta y anulación con restauración de inventario y compensación de efectivo.
+- [x] Alcance propio de ventas por defecto y supervisión global mediante permiso independiente.
 - [x] Apertura de caja, una caja abierta por usuario, ingresos y egresos.
 - [x] Movimientos de ventas/anulaciones, monto esperado, conteo, cierre y diferencia.
+- [x] Supervisión administrativa de cierres por responsable, fecha y resultado mediante permiso independiente.
 - [x] Integración con `control_caja_activo` y estado operativo de ventas.
 
 ### Dashboard, reportes y bitácora

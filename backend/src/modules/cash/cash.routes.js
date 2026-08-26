@@ -11,6 +11,16 @@ router.get(
   requirePermission('caja.movimientos'),
   cashController.getCurrentCash,
 );
+router.get(
+  '/supervision',
+  requirePermission('caja.supervisar'),
+  cashController.listClosedCash,
+);
+router.get(
+  '/supervision/:id',
+  requirePermission('caja.supervisar'),
+  cashController.getClosedCash,
+);
 router.get('/', requirePermission('caja.movimientos'), cashController.listCash);
 router.get(
   '/:id',

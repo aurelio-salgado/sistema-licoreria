@@ -6,15 +6,29 @@ import { ErrorState, LoadingState } from '../components/FeedbackStates'
 import { CashMetadata, CashMovements, CashSummaryCards } from '../components/cash/CashView'
 import { calculateCashSummary } from '../utils/cash'
 
-export function CashDetailPage() {
+export function CashDetailPage({ supervision = false }) {
   const { id } = useParams()
   const [cash, setCash] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const loadCash = useCallback(async () => { setLoading(true); setError(''); try { const response = await cashApi.getById(id); setCash(response?.data?.cash ?? null) } catch (requestError) { setError(requestError.message || 'No fue posible cargar la caja.') } finally { setLoading(false) } }, [id])
+  const loadCash = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const response = await (supervision ? cashApi.getSupervisionById(id) : cashApi.getById(id))
+      setCash(response?.data?.cash ?? null)
+    } catch (requestError) {
+      setError(requestError.message || 'No fue posible cargar la caja.')
+    } finally {
+      setLoading(false)
+    }
+  }, [id, supervision])
   useEffect(() => { loadCash() }, [loadCash])
   const summary = useMemo(() => calculateCashSummary(cash), [cash])
   if (loading) return <LoadingState message="Cargando detalle de caja…" />
   if (error || !cash) return <ErrorState title="No se pudo cargar la caja" message={error || 'Caja no encontrada'} actionLabel="Reintentar" onAction={loadCash} />
-  return <div className="page-stack cash-detail-page"><PageHeader eyebrow="CAJA / DETALLE" title={`Caja #${cash.id_caja}`} description="Consulta histórica de una caja propia." action={<StatusBadge status={cash.estado} />} /><section className="cash-current-card"><CashMetadata cash={cash} /><CashSummaryCards cash={cash} summary={summary} /></section><section className="cash-current-card cash-history"><div className="section-heading"><div><span className="eyebrow">MOVIMIENTOS</span><h2>Actividad de caja</h2></div></div><CashMovements movements={cash.movements} /></section><div className="cash-detail-actions"><Link className="button button--secondary" to="/cash">← Volver a caja</Link></div></div>
+  const description = supervision ? 'Consulta administrativa de un cierre de caja.' : 'Consulta histórica de una caja propia.'
+  const returnPath = supervision ? '/cash/closures' : '/cash'
+  const returnLabel = supervision ? 'Volver a cierres' : 'Volver a caja'
+  return <div className="page-stack cash-detail-page"><PageHeader eyebrow="CAJA / DETALLE" title={`Caja #${cash.id_caja}`} description={description} action={<StatusBadge status={cash.estado} />} /><section className="cash-current-card"><CashMetadata cash={cash} /><CashSummaryCards cash={cash} summary={summary} /></section><section className="cash-current-card cash-history"><div className="section-heading"><div><span className="eyebrow">MOVIMIENTOS</span><h2>Actividad de caja</h2></div></div><CashMovements movements={cash.movements} /></section><div className="cash-detail-actions"><Link className="button button--secondary" to={returnPath}>← {returnLabel}</Link></div></div>
 }

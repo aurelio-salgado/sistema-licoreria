@@ -73,6 +73,7 @@ async function execute(authorization, user = sessionUser()) {
     return user;
   };
   authRepository.findRolesByUserId = async () => ['Administrador'];
+  authRepository.findPermissionsByUserId = async () => ['ventas.ver'];
   sessionEpoch.get = async () => currentEpoch;
   await authenticate(req, res, (error) => {
     nextCalls += 1;
@@ -115,6 +116,7 @@ test('authenticate permite usuario activo y construye identidad actual', async (
     id_usuario: 7,
     nombre_usuario: 'nombre-actual',
     roles: ['Administrador'],
+    permisos: ['ventas.ver'],
   });
   assert.equal(Object.hasOwn(result.req.user, 'password'), false);
   assert.equal(Object.hasOwn(result.req.user, 'password_hash'), false);

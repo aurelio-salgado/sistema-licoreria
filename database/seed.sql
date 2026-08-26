@@ -31,11 +31,13 @@ VALUES
     ('inventario.ver', 'Ver inventario', 'inventario', 'Consultar existencias y movimientos.'),
     ('inventario.ajustar', 'Ajustar inventario', 'inventario', 'Registrar ajustes autorizados de inventario.'),
     ('ventas.ver', 'Ver ventas', 'ventas', 'Consultar ventas.'),
+    ('ventas.supervisar', 'Supervisar ventas', 'ventas', 'Consultar ventas de todos los vendedores.'),
     ('ventas.crear', 'Crear ventas', 'ventas', 'Registrar y confirmar ventas autorizadas.'),
     ('ventas.anular', 'Anular ventas', 'ventas', 'Anular ventas autorizadas.'),
     ('caja.abrir', 'Abrir caja', 'caja', 'Abrir una sesión de caja.'),
     ('caja.cerrar', 'Cerrar caja', 'caja', 'Cerrar una sesión de caja.'),
     ('caja.movimientos', 'Gestionar movimientos de caja', 'caja', 'Registrar y consultar movimientos autorizados de caja.'),
+    ('caja.supervisar', 'Supervisar cierres de caja', 'caja', 'Consultar cierres históricos de todos los usuarios.'),
     ('reportes.ver', 'Ver reportes', 'reportes', 'Consultar reportes autorizados.'),
     ('reportes.exportar', 'Exportar reportes', 'reportes', 'Exportar reportes autorizados.'),
     ('dashboard.ver', 'Ver dashboard', 'dashboard', 'Consultar indicadores autorizados.'),
@@ -85,6 +87,7 @@ INNER JOIN permisos AS p
         'inventario.ver',
         'ventas.ver',
         'reportes.ver',
+        'ventas.supervisar',
         'dashboard.ver',
         'dashboard.graficos'
     )

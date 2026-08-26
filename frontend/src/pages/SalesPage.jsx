@@ -41,6 +41,7 @@ export function SalesPage() {
   const [checkingOperation, setCheckingOperation] = useState(false)
   const [cashNotice, setCashNotice] = useState(false)
   const canCreate = hasPermission('ventas.crear')
+  const canSupervise = hasPermission('ventas.supervisar')
   const canOpenCash = hasPermission('caja.abrir')
 
   const loadSales = useCallback(async () => {
@@ -81,7 +82,7 @@ export function SalesPage() {
       <div className="sale-filters">
         <label className="filter-field"><span>Estado</span><select className="form-control" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, page: 1, status: event.target.value }))}><option value="">Todos</option><option value="preparacion">Preparación</option><option value="completada">Completada</option><option value="anulada">Anulada</option></select></label>
         <label className="filter-field"><span>Cliente</span><select className="form-control" value={filters.client} onChange={(event) => setFilters((current) => ({ ...current, page: 1, client: event.target.value }))}><option value="">Todos</option>{filterClients.map((client) => <option key={client.id_cliente} value={client.id_cliente}>{client.nombre}</option>)}</select></label>
-        <label className="filter-field"><span>ID vendedor</span><input className="form-control" type="number" min="1" step="1" placeholder="Todos" value={filters.seller} onChange={(event) => setFilters((current) => ({ ...current, page: 1, seller: event.target.value }))} /></label>
+        {canSupervise && <label className="filter-field"><span>ID vendedor</span><input className="form-control" type="number" min="1" step="1" placeholder="Todos" value={filters.seller} onChange={(event) => setFilters((current) => ({ ...current, page: 1, seller: event.target.value }))} /></label>}
         <label className="filter-field"><span>Fecha desde</span><input className="form-control" type="date" value={filters.dateFrom} onChange={(event) => setFilters((current) => ({ ...current, page: 1, dateFrom: event.target.value }))} /></label>
         <label className="filter-field"><span>Fecha hasta</span><input className="form-control" type="date" min={filters.dateFrom || undefined} value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, page: 1, dateTo: event.target.value }))} /></label>
       </div>

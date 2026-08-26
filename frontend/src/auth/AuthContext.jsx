@@ -81,7 +81,9 @@ export function AuthProvider({ children }) {
         ...storedSession,
         user: { ...storedSession.user, ...currentUser },
         roles: Array.isArray(currentUser.roles) ? currentUser.roles : [],
-        permissions: storedSession.permissions,
+        permissions: Array.isArray(currentUser.permisos)
+          ? currentUser.permisos
+          : storedSession.permissions,
       }
 
       writeStoredSession(refreshedSession)

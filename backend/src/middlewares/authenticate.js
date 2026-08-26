@@ -63,12 +63,16 @@ async function authenticate(req, res, next) {
       return rejectUnauthorized(res);
     }
 
-    const currentRoles = await authRepository.findRolesByUserId(pool, userId);
+    const [currentRoles, currentPermissions] = await Promise.all([
+      authRepository.findRolesByUserId(pool, userId),
+      authRepository.findPermissionsByUserId(pool, userId),
+    ]);
 
     req.user = {
       id_usuario: userId,
       nombre_usuario: user.nombre_usuario,
       roles: currentRoles,
+      permisos: currentPermissions,
     };
 
     return next();

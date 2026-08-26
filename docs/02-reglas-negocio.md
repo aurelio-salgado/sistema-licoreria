@@ -533,6 +533,14 @@ condicionada a validación multipart autorizada y al permiso `productos.editar`.
 
 **Validación:** El backend comprobará permiso, motivo y estado; registrará la reversión completa y rechazará la reutilización o reconfirmación.
 
+### RN-VEN-009 — Alcance de consulta de ventas
+
+**Descripción:** `ventas.ver` permite listar y detallar únicamente las ventas del usuario autenticado. `ventas.supervisar` amplía esa lectura a ventas de todos los vendedores y habilita el filtro por vendedor. La matriz inicial concede la supervisión al Administrador y al rol Consulta, pero no al Vendedor; la autoridad final es el permiso efectivo.
+
+**Aplica a:** Listado, filtros y detalle de ventas.
+
+**Validación:** El backend impondrá el usuario autenticado cuando no exista `ventas.supervisar`, rechazará un filtro de vendedor ajeno y tratará el detalle ajeno como no encontrado.
+
 ### 6.11 Facturación
 
 ### RN-FAC-001 — Número único por venta confirmada
@@ -658,6 +666,14 @@ condicionada a validación multipart autorizada y al permiso `productos.editar`.
 **Aplica a:** Caja, ventas anuladas e historial.
 
 **Validación:** La anulación generará el efecto trazable correspondiente y las consultas posteriores conservarán todos los movimientos originales.
+
+### RN-CAJ-007 — Supervisión de cierres de caja
+
+**Descripción:** El permiso `caja.supervisar` autoriza consultar los cierres históricos de todos los responsables e identificar cada resultado como faltante, sobrante o caja cuadrada. Esta supervisión incluye únicamente cajas cerradas y no amplía el historial operativo propio de caja.
+
+**Aplica a:** Supervisión administrativa, cierres y diferencias de caja.
+
+**Validación:** El backend exigirá el permiso efectivo, permitirá filtrar por responsable, fecha de cierre y resultado, y mantendrá restringidas al propietario las consultas protegidas por `caja.movimientos`.
 
 ### 6.14 Dashboard
 

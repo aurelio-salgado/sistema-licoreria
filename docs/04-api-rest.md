@@ -115,7 +115,7 @@ Ambos campos son obligatorios; `nombre_usuario` admite hasta 80 caracteres. Un u
 }
 ```
 
-Nunca se devuelve `password_hash`. `/auth/me` responde `{ "user": { "id_usuario", "nombre_usuario", "roles" } }`.
+Nunca se devuelve `password_hash`. `/auth/me` responde `{ "user": { "id_usuario", "nombre_usuario", "roles", "permisos" } }` con la identidad y permisos efectivos vigentes.
 
 ### `POST /auth/logout`
 
@@ -448,6 +448,8 @@ Solo aplica a `recibida`. Exige existencia suficiente para restar todas las cant
 
 Estados: `preparacion`, `completada`, `anulada`. Filtros: `page`, `limit`, `status`, `client`, `seller`, `date_from`, `date_to`; respuesta `{ sales, pagination }`.
 
+Alcance de lectura: ambos `GET` conservan el requisito `ventas.ver`. Sin `ventas.supervisar`, el listado queda limitado autoritativamente a `id_usuario` del usuario autenticado, omitir `seller` produce el alcance propio y enviar otro vendedor responde `403`; un detalle ajeno responde `404`. Con `ventas.supervisar`, el listado comprende todos los vendedores y `seller` funciona como filtro opcional. La matriz inicial concede este permiso global al Administrador y a Consulta, no al Vendedor.
+
 `GET /sales/payment-methods` responde `{ payment_methods }`, ordenados por
 `id_metodo_pago`, con `id_metodo_pago`, `nombre`, `requiere_referencia`,
 `es_efectivo` y `estado`. Solo devuelve registros activos y sirve para construir
@@ -529,6 +531,8 @@ Todas las mutaciones devuelven `{ sale }`; creación de venta/línea usa `201`. 
 | GET | `/cash/current` | `caja.movimientos` | Obtiene la caja abierta propia. |
 | GET | `/cash` | `caja.movimientos` | Lista historial propio. |
 | GET | `/cash/:id` | `caja.movimientos` | Detalla caja propia y movimientos. |
+| GET | `/cash/supervision` | `caja.supervisar` | Lista cierres de todos los responsables. |
+| GET | `/cash/supervision/:id` | `caja.supervisar` | Detalla un cierre y sus movimientos. |
 | POST | `/cash/:id/movements` | `caja.movimientos` | Registra ingreso o egreso manual propio. |
 | POST | `/cash/:id/close` | `caja.cerrar` | Cierra la caja propia. |
 
@@ -541,6 +545,8 @@ Apertura:
 Solo puede existir una caja abierta por usuario. Usuario, fechas, cierre, esperado, contado, diferencia y estado son controlados por backend. Responde `201 { cash }`.
 
 Listado: `page`, `limit`, `status=abierta|cerrada`, `user`, `date_from`, `date_to`. Solo permite omitir `user` o usar el id propio; otro usuario produce `403`. Responde `{ cash, pagination }`. Detalle incluye `usuario` y `movements`; una caja ajena se trata como no encontrada.
+
+Supervisión: `GET /cash/supervision` acepta exclusivamente `page`, `limit`, `user`, `date_from`, `date_to` y `result=faltante|sobrante|cuadrada`. Las fechas se aplican al cierre y la respuesta contiene solo cajas `cerrada`, con `cash`, `responsibles` y `pagination`. `GET /cash/supervision/:id` permite consultar el cierre de cualquier responsable e incluye `usuario` y `movements`; una caja abierta o inexistente se trata como no encontrada. Ambos endpoints exigen `caja.supervisar` y no alteran el alcance propio de `caja.movimientos`.
 
 Movimiento manual:
 

@@ -1,5 +1,14 @@
 const CASH_STATES = new Set(['abierta', 'cerrada']);
 const MANUAL_MOVEMENT_TYPES = new Set(['ingreso', 'egreso']);
+const SUPERVISION_RESULTS = new Set(['faltante', 'sobrante', 'cuadrada']);
+const SUPERVISION_QUERY_FIELDS = new Set([
+  'page',
+  'limit',
+  'user',
+  'date_from',
+  'date_to',
+  'result',
+]);
 
 function validationError(message) {
   const error = new Error(message);
@@ -151,10 +160,41 @@ function validateListQuery(query) {
   return { page, limit, status, requestedUser, dateFrom, dateTo };
 }
 
+function validateSupervisionQuery(query = {}) {
+  for (const field of Object.keys(query)) {
+    if (!SUPERVISION_QUERY_FIELDS.has(field))
+      throw validationError(`El filtro ${field} no es permitido`);
+  }
+  const page = query.page === undefined ? 1 : positiveInteger(query.page, 'page');
+  const limit =
+    query.limit === undefined ? 20 : positiveInteger(query.limit, 'limit');
+  if (limit > 100) throw validationError('limit debe estar entre 1 y 100');
+  if (!Number.isSafeInteger((page - 1) * limit))
+    throw validationError('page está fuera del rango permitido');
+  const requestedUser =
+    query.user === undefined || query.user === ''
+      ? null
+      : positiveInteger(query.user, 'user');
+  const dateFrom = query.date_from
+    ? validDate(query.date_from, 'date_from')
+    : null;
+  const dateTo = query.date_to ? validDate(query.date_to, 'date_to') : null;
+  if (dateFrom && dateTo && dateFrom > dateTo)
+    throw validationError('date_from no puede ser posterior a date_to');
+  const result =
+    query.result === undefined || query.result === ''
+      ? null
+      : String(query.result).trim();
+  if (result && !SUPERVISION_RESULTS.has(result))
+    throw validationError('result debe ser faltante, sobrante o cuadrada');
+  return { page, limit, requestedUser, dateFrom, dateTo, result };
+}
+
 module.exports = {
   validateCloseInput,
   validateId: (value) => positiveInteger(value, 'El id'),
   validateListQuery,
+  validateSupervisionQuery,
   validateMovementInput,
   validateOpenInput,
 };

@@ -237,8 +237,14 @@ function itemSnapshot(i) {
       }
     : null;
 }
-async function listSales(q) {
-  const f = validateListQuery(q),
+async function listSales(q, reader) {
+  const f = validateListQuery(q);
+  if (!reader.canSupervise) {
+    if (f.sellerId !== null && f.sellerId !== reader.userId)
+      throw error(403, 'Acceso denegado');
+    f.sellerId = reader.userId;
+  }
+  const
     [sales, total] = await Promise.all([
       repo.list(pool, f),
       repo.count(pool, f),
@@ -253,8 +259,11 @@ async function listSales(q) {
     },
   };
 }
-async function getSale(id) {
-  return hydrate(pool, validateId(id));
+async function getSale(id, reader) {
+  const sale = await hydrate(pool, validateId(id));
+  if (!reader.canSupervise && sale.usuario.id_usuario !== reader.userId)
+    throw notFound();
+  return sale;
 }
 async function listPaymentMethods() {
   return repo.listActivePaymentMethods(pool);

@@ -40,6 +40,24 @@ async function getCash(req, res, next) {
   }
 }
 
+async function listClosedCash(req, res, next) {
+  try {
+    const data = await cashService.listClosedCash(req.query);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getClosedCash(req, res, next) {
+  try {
+    const cash = await cashService.getClosedCash(req.params.id);
+    res.status(200).json({ success: true, data: { cash } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function createMovement(req, res, next) {
   try {
     const movement = await cashService.createMovement(
@@ -70,7 +88,9 @@ module.exports = {
   closeCash,
   createMovement,
   getCash,
+  getClosedCash,
   getCurrentCash,
   listCash,
+  listClosedCash,
   openCash,
 };

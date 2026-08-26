@@ -18,6 +18,27 @@ function listFilters(userId, filters) {
   return { clause: `WHERE ${conditions.join(' AND ')}`, values };
 }
 
+function supervisionFilters(filters) {
+  const conditions = ["c.estado='cerrada'"];
+  const values = [];
+  if (filters.requestedUser) {
+    conditions.push('c.id_usuario=?');
+    values.push(filters.requestedUser);
+  }
+  if (filters.dateFrom) {
+    conditions.push('c.fecha_cierre>=?');
+    values.push(`${filters.dateFrom} 00:00:00`);
+  }
+  if (filters.dateTo) {
+    conditions.push('c.fecha_cierre<DATE_ADD(?,INTERVAL 1 DAY)');
+    values.push(`${filters.dateTo} 00:00:00`);
+  }
+  if (filters.result === 'faltante') conditions.push('c.diferencia<0');
+  if (filters.result === 'sobrante') conditions.push('c.diferencia>0');
+  if (filters.result === 'cuadrada') conditions.push('c.diferencia=0');
+  return { clause: `WHERE ${conditions.join(' AND ')}`, values };
+}
+
 async function lockUser(connection, userId) {
   const [rows] = await connection.execute(
     'SELECT id_usuario,estado FROM usuarios WHERE id_usuario=? LIMIT 1 FOR UPDATE',
@@ -74,6 +95,39 @@ async function count(executor, userId, filters) {
     values,
   );
   return Number(row.total);
+}
+
+async function listClosedForSupervision(executor, filters) {
+  const { clause, values } = supervisionFilters(filters);
+  const [rows] = await executor.execute(
+    `SELECT c.id_caja,c.id_usuario,c.fecha_apertura,c.fecha_cierre,c.monto_apertura,c.monto_esperado,c.monto_contado,c.diferencia,c.estado,u.nombre AS usuario_nombre,u.apellido AS usuario_apellido,u.nombre_usuario FROM cajas c INNER JOIN usuarios u ON u.id_usuario=c.id_usuario ${clause} ORDER BY c.fecha_cierre DESC,c.id_caja DESC LIMIT ? OFFSET ?`,
+    [...values, filters.limit, (filters.page - 1) * filters.limit],
+  );
+  return rows;
+}
+
+async function countClosedForSupervision(executor, filters) {
+  const { clause, values } = supervisionFilters(filters);
+  const [[row]] = await executor.execute(
+    `SELECT COUNT(*) AS total FROM cajas c ${clause}`,
+    values,
+  );
+  return Number(row.total);
+}
+
+async function listSupervisionUsers(executor) {
+  const [rows] = await executor.execute(
+    `SELECT DISTINCT u.id_usuario,u.nombre,u.apellido,u.nombre_usuario FROM cajas c INNER JOIN usuarios u ON u.id_usuario=c.id_usuario WHERE c.estado='cerrada' ORDER BY u.nombre,u.apellido,u.id_usuario`,
+  );
+  return rows;
+}
+
+async function findClosedByIdForSupervision(executor, cashId) {
+  const [rows] = await executor.execute(
+    `SELECT ${CASH_COLUMNS},u.nombre AS usuario_nombre,u.apellido AS usuario_apellido,u.nombre_usuario FROM cajas c INNER JOIN usuarios u ON u.id_usuario=c.id_usuario WHERE c.id_caja=? AND c.estado='cerrada' LIMIT 1`,
+    [cashId],
+  );
+  return rows[0] || null;
 }
 
 async function listMovements(executor, cashId) {
@@ -135,14 +189,18 @@ async function createAudit(connection, data) {
 module.exports = {
   close,
   count,
+  countClosedForSupervision,
   create,
   createAudit,
   createMovement,
   findOpenByUser,
+  findClosedByIdForSupervision,
   findOwnedById,
   findOwnedByIdForUpdate,
   list,
+  listClosedForSupervision,
   listMovements,
+  listSupervisionUsers,
   lockMovements,
   lockUser,
 };

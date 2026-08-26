@@ -4,6 +4,7 @@ const {
   validateCloseInput,
   validateId,
   validateListQuery,
+  validateSupervisionQuery,
   validateMovementInput,
   validateOpenInput,
 } = require('./cash.validation');
@@ -152,6 +153,47 @@ async function getCash(rawId, userId) {
   return cash;
 }
 
+function attachUser(cash) {
+  cash.usuario = {
+    id_usuario: cash.id_usuario,
+    nombre: cash.usuario_nombre,
+    apellido: cash.usuario_apellido,
+    nombre_usuario: cash.nombre_usuario,
+  };
+  delete cash.usuario_nombre;
+  delete cash.usuario_apellido;
+  delete cash.nombre_usuario;
+  return cash;
+}
+
+async function listClosedCash(rawQuery) {
+  const filters = validateSupervisionQuery(rawQuery);
+  const [cash, total, responsibles] = await Promise.all([
+    cashRepository.listClosedForSupervision(pool, filters),
+    cashRepository.countClosedForSupervision(pool, filters),
+    cashRepository.listSupervisionUsers(pool),
+  ]);
+  return {
+    cash: cash.map(attachUser),
+    responsibles,
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total,
+      total_pages: Math.ceil(total / filters.limit),
+    },
+  };
+}
+
+async function getClosedCash(rawId) {
+  const cashId = validateId(rawId);
+  const cash = await cashRepository.findClosedByIdForSupervision(pool, cashId);
+  if (!cash) throw cashNotFoundError();
+  attachUser(cash);
+  cash.movements = await cashRepository.listMovements(pool, cashId);
+  return cash;
+}
+
 async function createMovement(rawId, rawData, actor) {
   const cashId = validateId(rawId);
   const data = validateMovementInput(rawData);
@@ -244,8 +286,10 @@ module.exports = {
   closeCash,
   createMovement,
   getCash,
+  getClosedCash,
   getCurrentCash,
   hasOpenCash,
   listCash,
+  listClosedCash,
   openCash,
 };

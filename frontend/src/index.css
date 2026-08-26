@@ -543,6 +543,7 @@ a.nav-item:hover { color: #f5f5f2; background: rgba(255,255,255,.055); }
 .cash-movements-table td:last-child, .cash-movements-table th:last-child { text-align: right; white-space: nowrap; }
 .cash-history { margin-top: 22px; }
 .cash-filters { margin-bottom: 20px; display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; }
+.cash-supervision-filters { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
 .cash-history-table { min-width: 1120px; }
 .cash-history-table td:nth-child(n+4):nth-child(-n+6), .cash-history-table th:nth-child(n+4):nth-child(-n+6) { text-align: right; white-space: nowrap; }
 .cash-difference { white-space: nowrap; font-size: 12px; }

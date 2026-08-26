@@ -1,10 +1,14 @@
 const service = require('./sale.service');
 const actor = (req) => ({ userId: req.user.id_usuario, ipAddress: req.ip });
+const reader = (req) => ({
+  userId: req.user.id_usuario,
+  canSupervise: req.user.permisos.includes('ventas.supervisar'),
+});
 async function listSales(req, res, next) {
   try {
     res
       .status(200)
-      .json({ success: true, data: await service.listSales(req.query) });
+      .json({ success: true, data: await service.listSales(req.query, reader(req)) });
   } catch (e) {
     next(e);
   }
@@ -13,7 +17,7 @@ async function getSale(req, res, next) {
   try {
     res.status(200).json({
       success: true,
-      data: { sale: await service.getSale(req.params.id) },
+      data: { sale: await service.getSale(req.params.id, reader(req)) },
     });
   } catch (e) {
     next(e);
