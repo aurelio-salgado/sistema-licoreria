@@ -9,5 +9,5 @@ export function PublicOnlyRoute({ children }) {
     return <LoadingState message="Preparando Liquorix…" fullPage />
   }
 
-  return isAuthenticated ? <Navigate to="/" replace /> : children
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children
 }

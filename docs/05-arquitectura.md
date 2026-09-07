@@ -24,8 +24,9 @@ script usa `crypto.randomUUID()`, `INSERT IGNORE` y nunca imprime el valor.
 `modules/publicCatalog` separa ruta, controlador, servicio, repositorio y validación
 sin reutilizar la proyección administrativa de productos. La consulta pública no
 usa JWT, aplica una whitelist de filtros y calcula únicamente disponibilidad
-booleana. `/catalog` posee layout público propio con la identidad visual existente y
-permanece fuera de `ProtectedRoute` y `PublicOnlyRoute`.
+booleana. `/` posee layout público propio con la identidad visual existente y
+permanece fuera de `ProtectedRoute` y `PublicOnlyRoute`; `/catalog` redirige a la
+raíz como alias de compatibilidad. El área autenticada inicia en `/dashboard`.
 
 Las imágenes se aíslan en `storage/products`; nunca se publica `storage` completo.
 Una ruta controlada valida nombre UUID, resolución dentro de la carpeta, archivo
@@ -37,6 +38,12 @@ después del commit; una transacción fallida limpia el archivo nuevo.
 
 Los logos de marca reutilizan esta validación y escritura segura con almacenamiento
 separado en `storage/brands` y lectura pública controlada; no se publica el storage.
+
+Los respaldos usan el modo nativo `mysqldump --databases` después de validar
+`DB_NAME` como identificador compatible. Por ello el SQL contiene `CREATE DATABASE
+IF NOT EXISTS` y `USE` para el destino configurado. No contiene `DROP DATABASE`;
+la decisión de eliminar una base durante una recuperación sigue siendo externa y
+administrativa. El SHA-256 se calcula después de completar el archivo temporal.
 
 La recuperación manual no atraviesa el servicio de restauración. Para ese escenario,
 `npm --prefix backend run rotate-session-epoch` invoca `sessionEpoch.rotate()` con la

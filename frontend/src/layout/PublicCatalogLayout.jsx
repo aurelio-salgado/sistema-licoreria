@@ -1,5 +1,4 @@
 import { Link, Outlet } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
 
 function BottleMark() {
   return <span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 5h10M13 5v5l-4 5v10c0 1.1.9 2 2 2h10a2 2 0 0 0 2-2V15l-4-5V5M9 19h14" /></svg></span>
@@ -18,8 +17,6 @@ function scrollToSection(event, sectionId) {
 }
 
 export function PublicCatalogLayout() {
-  const { isAuthenticated } = useAuth()
-
   return <div className="public-shell">
     <header className="public-header">
       <div className="public-header-inner">
@@ -28,7 +25,7 @@ export function PublicCatalogLayout() {
           <a href="#inicio" onClick={(event) => scrollToSection(event, 'inicio')}>Inicio</a>
           <a href="#marcas" onClick={(event) => scrollToSection(event, 'marcas')}>Buscar por marca</a>
           <a className="button button--primary public-header-cta" href="#productos" onClick={(event) => scrollToSection(event, 'productos')}>Explorar catálogo</a>
-          {isAuthenticated && <Link className="public-system-link" to="/">Volver al sistema</Link>}
+          <Link className="public-system-link" to="/login">Iniciar sesión</Link>
         </nav>
       </div>
     </header>

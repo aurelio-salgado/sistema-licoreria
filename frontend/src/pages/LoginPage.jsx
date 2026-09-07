@@ -40,7 +40,7 @@ export function LoginPage() {
         nombre_usuario: credentials.nombre_usuario.trim(),
         password: credentials.password,
       })
-      const destination = location.state?.from?.pathname || '/'
+      const destination = location.state?.from?.pathname || '/dashboard'
       navigate(destination, { replace: true })
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 401) {

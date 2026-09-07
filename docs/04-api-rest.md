@@ -681,8 +681,10 @@ El listado admite exclusivamente `page`, `limit`, `tipo`, `operacion`, `estado`,
 argumentos ni errores técnicos. Descarga y restauración vuelven a comprobar
 ubicación, archivo regular, tamaño, formato y SHA-256.
 
-La creación usa `.sql.part`, `mysqldump` con `shell:false`, validación y renombrado
-atómico. La restauración crea un preventivo y usa `mysql` mediante stdin. En la
+La creación usa `.sql.part`, `mysqldump --databases` con `shell:false`, validación
+estricta de `DB_NAME` y renombrado atómico. El SQL incluye la creación condicional
+y selección de la base configurada, sin eliminarla. La restauración crea un
+preventivo y usa `mysql` mediante stdin. En la
 después del import rota `jwt_session_epoch` antes de registrar éxito y abandonar
 mantenimiento. Un token sin el claim `session_epoch` o con un valor anterior recibe
 el mismo `401 No autorizado`, sin revelar el valor vigente.

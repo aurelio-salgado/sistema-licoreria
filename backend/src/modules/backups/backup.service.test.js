@@ -38,7 +38,7 @@ function integrationContext() {
     oldestManual: async () => [], retire: async () => {}, verifyEssentialTables: async () => true,
   };
   const inspect = async (file) => { const content = await fsp.readFile(file); return { size: content.length, checksum: crypto.createHash('sha256').update(content).digest('hex') }; };
-  const processTools = { dump: async (file) => { dumped.push(file); await fsp.writeFile(file, 'CREATE TABLE `respaldos` (`checksum_sha256` CHAR(64));'); }, inspect, restore: async () => { processTools.restored = true; } };
+  const processTools = { dump: async (file) => { dumped.push(file); await fsp.writeFile(file, 'CREATE DATABASE IF NOT EXISTS `liquorix_test`;\nUSE `liquorix_test`;\nCREATE TABLE `respaldos` (`checksum_sha256` CHAR(64));'); }, inspect, restore: async () => { processTools.restored = true; } };
   const coordinator = { acquireBackup: () => true, releaseBackup: () => {}, beginRestore: () => true, endRestore: () => { coordinator.ended = true; } };
   const pool = { renew: async () => { pool.renewed = true; } };
   return { audits, coordinator, dumped, pool, processTools, records, repository };
@@ -51,6 +51,8 @@ test('crea respaldo con parcial, SHA-256, auditoria y limpieza del lock', async 
     assert.equal(result.estado, 'exitoso'); assert.equal(result.archivo_disponible, true);
     assert.equal(context.audits[0].action, 'crear_respaldo');
     assert.equal(context.dumped[0].endsWith('.sql.part'), true);
+    const finalContent = await fsp.readFile(context.dumped[0].replace(/\.part$/, ''));
+    assert.equal(context.records.get(result.id_respaldo).checksum_sha256, crypto.createHash('sha256').update(finalContent).digest('hex'));
     await assert.rejects(() => fsp.stat(context.dumped[0]));
   } finally { for (const file of context.dumped) await fsp.rm(file.replace(/\.part$/, ''), { force: true }); }
 });

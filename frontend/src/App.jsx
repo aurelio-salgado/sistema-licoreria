@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { AppLayout } from './layout/AppLayout'
 import { DashboardPage } from './pages/DashboardPage'
@@ -43,13 +43,14 @@ export default function App() {
           />
 
           <Route element={<PublicCatalogLayout />}>
-            <Route path="catalog" element={<PublicCatalogPage />} />
+            <Route index element={<PublicCatalogPage />} />
+            <Route path="catalog" element={<Navigate to="/" replace />} />
           </Route>
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route
-                index
+                path="dashboard"
                 element={
                   <PermissionRoute permission="dashboard.ver">
                     <DashboardPage />

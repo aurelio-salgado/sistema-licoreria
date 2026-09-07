@@ -27,7 +27,7 @@ requieren confirmación y usan `PATCH /:id/status`. No existe eliminación físi
 
 ## Catálogo público
 
-La ruta `/catalog`, disponible con o sin sesión, utiliza una plantilla pública con
+La ruta `/`, disponible con o sin sesión, utiliza una plantilla pública con
 header, sidebar adaptable, body y footer sin navegación administrativa. Consulta el
 endpoint independiente `/api/v1/public/catalog`, presenta cards, placeholder local,
 búsqueda remota, categoría, marca, paginación y estados `Disponible`/`Agotado` sin

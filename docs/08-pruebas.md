@@ -7,7 +7,8 @@ disponibilidad booleana, filtros, paginación y referencias de imagen controlada
 La lectura de archivos cubre UUID, traversal, inexistencia, tamaño, firma y MIME sin
 usar MariaDB real.
 
-La verificación frontend debe cubrir `/catalog` sin sesión y con sesión, layout
+La verificación frontend debe cubrir `/` sin sesión y con sesión, la redirección
+de compatibilidad desde `/catalog`, `/login` y la protección de `/dashboard`; además del layout
 público completo, cards con imagen y placeholder, búsqueda remota, categoría,
 marca, paginación, agotados, teclado, texto alternativo y anchos 360, 480, 768 y
 escritorio. La gestión administrativa cubre selección, preview, descarte, creación
@@ -24,6 +25,9 @@ pública mínima y selección remota desde cards con limpieza del filtro.
 Los procesos externos siempre se sustituyen por stubs en pruebas automáticas. Se
 cubren filtros, confirmación, SHA-256, metadata pública, path traversal, concurrencia,
 mantenimiento, emisión/comparación/rotación del epoch y no exposición en Settings.
+El contrato de generación comprueba el modo nativo `--databases`, la ausencia de
+`--add-drop-database`, el uso del nombre recibido, su validación estricta y que el
+SHA-256 corresponde al SQL autocontenido final.
 Una recuperación real solo se
 prueba manualmente contra una base temporal aislada, nunca contra
 `sistema_licoreria`.
