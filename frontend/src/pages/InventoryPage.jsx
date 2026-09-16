@@ -6,6 +6,7 @@ import { ErrorState, LoadingState } from '../components/FeedbackStates'
 import { AdjustmentForm } from '../components/inventory/AdjustmentForm'
 import { InventoryTable, LowStockTable, MovementsTable } from '../components/inventory/InventoryTables'
 import { createActionError } from '../utils/actionErrors'
+import { filterInventoryByProductName } from '../utils/inventorySearch'
 
 const MOVEMENT_LIMIT = 20
 const initialMovementFilters = { page: 1, limit: MOVEMENT_LIMIT, product: '', type: '', nature: '', referenceType: '', dateFrom: '', dateTo: '' }
@@ -22,6 +23,7 @@ export function InventoryPage() {
   const { hasPermission } = useAuth()
   const [activeTab, setActiveTab] = useState('stock')
   const [status, setStatus] = useState('activo')
+  const [inventorySearch, setInventorySearch] = useState('')
   const [inventory, setInventory] = useState([])
   const [lowStock, setLowStock] = useState([])
   const [movements, setMovements] = useState([])
@@ -72,6 +74,10 @@ export function InventoryPage() {
   useEffect(() => { if (!feedback) return undefined; const timer = window.setTimeout(() => setFeedback(''), 4500); return () => window.clearTimeout(timer) }, [feedback])
 
   const activeProducts = useMemo(() => allProducts.filter((item) => item.estado === 'activo'), [allProducts])
+  const filteredInventory = useMemo(
+    () => filterInventoryByProductName(inventory, inventorySearch),
+    [inventory, inventorySearch],
+  )
   const productsById = useMemo(() => new Map(allProducts.map((item) => [String(item.id_producto), item])), [allProducts])
   const setMovementFilter = (field, value) => setMovementFilters((current) => ({ ...current, page: 1, [field]: value }))
   const refreshAll = async () => Promise.all([loadInventory(), loadLowStock(), loadMovements(), loadProductMetadata()])
@@ -109,8 +115,8 @@ export function InventoryPage() {
       </div>
 
       {activeTab === 'stock' && <section id="inventory-panel-stock" className="catalog-panel inventory-panel" role="tabpanel" aria-labelledby="inventory-tab-stock">
-        <div className="inventory-panel-heading"><div><h2>Existencias actuales</h2><p>Valores registrados actualmente por producto y unidad de medida.</p></div><label className="filter-field"><span>Estado del producto</span><select className="form-control" value={status} onChange={(event) => setStatus(event.target.value)}><option value="activo">Activos</option><option value="inactivo">Inactivos</option><option value="todos">Todos</option></select></label></div>
-        {loadingInventory ? <LoadingState message="Cargando existencias…" /> : inventoryError ? <ErrorState title="No se pudieron cargar las existencias" message={inventoryError} actionLabel="Reintentar" onAction={loadInventory} /> : !inventory.length ? <EmptyState message="No hay productos para el estado seleccionado." /> : <InventoryTable items={inventory} />}
+        <div className="inventory-panel-heading"><div><h2>Existencias actuales</h2><p>Valores registrados actualmente por producto y unidad de medida.</p></div><div className="inventory-stock-filters"><label className="filter-field"><span>Buscar producto</span><input className="form-control" type="search" placeholder="Buscar producto por nombre..." value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} /></label><label className="filter-field"><span>Estado del producto</span><select className="form-control" value={status} onChange={(event) => setStatus(event.target.value)}><option value="activo">Activos</option><option value="inactivo">Inactivos</option><option value="todos">Todos</option></select></label></div></div>
+        {loadingInventory ? <LoadingState message="Cargando existencias…" /> : inventoryError ? <ErrorState title="No se pudieron cargar las existencias" message={inventoryError} actionLabel="Reintentar" onAction={loadInventory} /> : !filteredInventory.length ? <EmptyState message={inventorySearch.trim() ? 'No se encontraron productos.' : 'No hay productos para el estado seleccionado.'} /> : <InventoryTable items={filteredInventory} />}
       </section>}
 
       {activeTab === 'low' && <section id="inventory-panel-low" className="catalog-panel inventory-panel" role="tabpanel" aria-labelledby="inventory-tab-low">

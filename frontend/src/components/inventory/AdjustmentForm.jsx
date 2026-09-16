@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { FormField } from '../CatalogUi'
 import { formatInventoryQuantity, quantityWithUnit } from '../../utils/inventory'
+import { filterInventoryByProductName } from '../../utils/inventorySearch'
 
 const initialValues = { id_producto: '', naturaleza: 'entrada', cantidad: '', motivo: '' }
 
@@ -24,6 +25,11 @@ function validate(values, product) {
 export function AdjustmentForm({ products, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState({})
+  const [productSearch, setProductSearch] = useState('')
+  const filteredProducts = useMemo(
+    () => filterInventoryByProductName(products, productSearch),
+    [productSearch, products],
+  )
   const selectedProduct = useMemo(() => products.find((item) => String(item.id_producto) === values.id_producto), [products, values.id_producto])
   const quantity = Number(values.cantidad)
   const estimated = selectedProduct && Number.isFinite(quantity) && quantity > 0
@@ -43,11 +49,15 @@ export function AdjustmentForm({ products, busy, onCancel, onSubmit }) {
 
   return (
     <form className="adjustment-form" onSubmit={submit} noValidate>
+      <FormField label="Buscar producto" name="adjustment-product-search">
+        <input id="adjustment-product-search" className="form-control" type="search" placeholder="Buscar producto por nombre..." value={productSearch} disabled={busy} onChange={(event) => { setProductSearch(event.target.value); setValue('id_producto', '') }} />
+      </FormField>
       <FormField label="Producto" name="adjustment-product" error={errors.id_producto}>
         <select id="adjustment-product" className="form-control" value={values.id_producto} disabled={busy} onChange={(event) => setValue('id_producto', event.target.value)}>
           <option value="">Selecciona un producto</option>
-          {products.map((item) => <option key={item.id_producto} value={item.id_producto}>{item.codigo} · {item.nombre}</option>)}
+          {filteredProducts.map((item) => <option key={item.id_producto} value={item.id_producto}>{item.codigo} · {item.nombre}</option>)}
         </select>
+        {productSearch.trim() && !filteredProducts.length && <span className="form-help">No se encontraron productos.</span>}
       </FormField>
       {selectedProduct && <div className="adjustment-stock-summary"><div><span>Existencia actual</span><strong>{quantityWithUnit(selectedProduct.existencia, selectedProduct)}</strong></div><div><span>Existencia mínima</span><strong>{quantityWithUnit(selectedProduct.existencia_minima, selectedProduct)}</strong></div><div><span>Unidad</span><strong>{selectedProduct.unidad_nombre}</strong></div></div>}
       <div className="adjustment-form-grid">
