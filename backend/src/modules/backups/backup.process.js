@@ -8,6 +8,23 @@ const { finished } = require('node:stream/promises');
 
 const env = require('../../config/env');
 
+const DATABASE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+function validateDatabaseName(value) {
+  if (typeof value !== 'string' || !DATABASE_NAME_PATTERN.test(value)) {
+    throw new Error('Configuracion de base de datos invalida');
+  }
+  return value;
+}
+
+function buildDumpArguments(credentials, databaseName = env.database.name) {
+  return [
+    `--defaults-extra-file=${credentials}`,
+    '--single-transaction', '--routines', '--triggers', '--events',
+    '--hex-blob', '--skip-comments', '--databases', validateDatabaseName(databaseName),
+  ];
+}
+
 function quoteOption(value) {
   const text = String(value ?? '');
   if (/[\r\n\0]/.test(text)) throw new Error('Configuracion de base de datos invalida');
@@ -78,11 +95,11 @@ async function dump(destination) {
     const output = fs.createWriteStream(destination, { flags: 'wx', mode: 0o600 });
     const completion = finished(output);
     try {
-      await runProcess(env.backups.dumpExecutable, [
-        `--defaults-extra-file=${credentials}`,
-        '--single-transaction', '--routines', '--triggers', '--events',
-        '--hex-blob', '--skip-comments', env.database.name,
-      ], { output });
+      await runProcess(
+        env.backups.dumpExecutable,
+        buildDumpArguments(credentials),
+        { output },
+      );
       await completion;
     } catch (error) {
       output.destroy();
@@ -95,7 +112,7 @@ async function dump(destination) {
 async function restore(source) {
   return withCredentials((credentials) => runProcess(
     env.backups.restoreExecutable,
-    [`--defaults-extra-file=${credentials}`, env.database.name],
+    [`--defaults-extra-file=${credentials}`, validateDatabaseName(env.database.name)],
     { input: fs.createReadStream(source) },
   ));
 }
@@ -122,4 +139,11 @@ async function inspect(file) {
   return { size: stat.size, checksum: hash.digest('hex') };
 }
 
-module.exports = { dump, inspect, restore, runProcess };
+module.exports = {
+  buildDumpArguments,
+  dump,
+  inspect,
+  restore,
+  runProcess,
+  validateDatabaseName,
+};

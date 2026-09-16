@@ -161,6 +161,15 @@ npm --prefix backend test
 
 La suite actual utiliza `node:test`. Sus pruebas unitarias emplean dependencias controladas y no requieren conectarse a una instancia real de MariaDB.
 
+## Preparar datos para la demostración
+
+Los scripts `database/demo-reset.sql` y `database/demo-sales.sql` preparan un
+dataset controlado para la defensa. No forman parte de la instalación ordinaria ni
+deben ejecutarse directamente sin ensayarlos primero sobre una base temporal
+aislada. El propósito, orden, precondiciones, validaciones y criterios de
+`COMMIT`/`ROLLBACK` se describen en `docs/08-pruebas.md`. Los scripts no deben
+ejecutarse durante las pruebas automatizadas.
+
 ## Orden recomendado de instalación
 
 1. Crear la base de datos.

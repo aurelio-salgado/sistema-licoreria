@@ -1,5 +1,5 @@
 export const navigationItems = [
-  { label: 'Dashboard', path: '/', permission: 'dashboard.ver', icon: 'DB', available: true },
+  { label: 'Dashboard', path: '/dashboard', permission: 'dashboard.ver', icon: 'DB', available: true },
   {
     label: 'Productos', permission: 'productos.ver', icon: 'PR',
     children: [
@@ -22,5 +22,5 @@ export const navigationItems = [
   { label: 'Respaldos', path: '/backups', permission: 'respaldos.ver', icon: 'RS', available: true },
   { label: 'Reportes', path: '/reports', permission: 'reportes.ver', icon: 'RE', available: true },
   { label: 'Configuración', path: '/settings', permission: 'configuracion.ver', icon: 'CF', available: true },
-  { label: 'Catálogo público', path: '/catalog', icon: 'CP', available: true, publicLink: true },
+  { label: 'Catálogo público', path: '/', icon: 'CP', available: true, publicLink: true },
 ]

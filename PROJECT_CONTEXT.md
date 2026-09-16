@@ -11,9 +11,9 @@ Carné: 18-01523-0
 
 ## Descripción general
 
-El proyecto consiste en desarrollar una aplicación web para administrar las operaciones principales de una licorería.
+El proyecto consiste en una aplicación web que administra las operaciones principales de una licorería.
 
-El sistema permitirá gestionar:
+El sistema permite gestionar:
 
 - Productos.
 - Categorías.
@@ -46,7 +46,7 @@ La administración manual de inventario y ventas puede provocar:
 - Poca trazabilidad de las acciones de los usuarios.
 - Falta de reportes para tomar decisiones.
 
-El sistema centralizará la información y automatizará estos procesos.
+El sistema centraliza la información y automatiza estos procesos.
 
 ## Objetivo general
 
@@ -83,7 +83,7 @@ Desarrollar una aplicación web segura y modular que permita controlar el invent
 
 ## Arquitectura
 
-El proyecto estará dividido en:
+El proyecto está dividido en:
 
 ```text
 sistema-licoreria/

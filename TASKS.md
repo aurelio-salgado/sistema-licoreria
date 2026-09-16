@@ -100,7 +100,7 @@ Este documento resume el estado observable del repositorio al cierre del desarro
 - [~] Probar Administrador, Vendedor y Consulta con la matriz real de permisos.
 - [~] Ensayar compra, ajuste, caja, venta, pago combinado, anulación y cierre.
 - [~] Abrir una exportación XLSX real y revisar el comprobante impreso.
-- [~] Revisar `/catalog` y pantallas administrativas en 360, 480, 768 px y escritorio, con teclado y foco visible.
+- [~] Revisar `/` (catálogo público) y pantallas administrativas en 360, 480, 768 px y escritorio, con teclado y foco visible.
 - [~] Ensayar respaldo/restauración solo contra una base temporal siguiendo `docs/09-recuperacion-desastres.md`.
 - [~] Confirmar que un JWT previo es rechazado después de restaurar o rotar el epoch.
 - [~] Preparar capturas, dataset estable, respaldo ensayado y guion de demostración.
@@ -131,6 +131,6 @@ Este documento resume el estado observable del repositorio al cierre del desarro
 | Bitácora | Módulo `audit` |
 | Configuración | Módulo `settings` |
 | Respaldos y recuperación | Módulo `backups`, `sessionEpoch` y guía de recuperación |
-| Catálogo público | Módulo `publicCatalog` y ruta `/catalog` |
+| Catálogo público | Módulo `publicCatalog` y ruta `/` (`/catalog` como alias) |
 | Persistencia y demo | `schema.sql`, `seed.sql`, `demo-reset.sql` y `demo-sales.sql` |
 | Pruebas | Archivos `*.test.js` y `docs/08-pruebas.md` |

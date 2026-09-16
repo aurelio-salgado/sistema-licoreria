@@ -50,7 +50,8 @@ Antes de intervenir la base real:
    `sistema_licoreria_restore_test`.
 2. Compruebe desde el servidor MariaDB la identidad del host y puerto esperados.
 3. Cree o recree únicamente `sistema_licoreria_restore_test` con `utf8mb4` y una
-   colación compatible.
+   colación compatible, o permita que el respaldo autocontenido la cree si no
+   existe. El archivo selecciona por sí mismo la base configurada al generarlo.
 4. Importe el archivo SQL con el cliente `mysql` y credenciales obtenidas de una
    configuración privada, nunca como argumentos visibles.
 5. Ejecute las verificaciones de integridad indicadas más adelante.
@@ -61,6 +62,23 @@ Antes de intervenir la base real:
 No reutilice el archivo `.env` de producción para el ensayo ni incorpore archivos
 `.env` al repositorio.
 
+## Importación del respaldo autocontenido con phpMyAdmin
+
+1. Detenga el backend y confirme que el `DB_NAME` escrito dentro del respaldo
+   corresponde exclusivamente al destino autorizado.
+2. Ingrese a phpMyAdmin con una cuenta técnica que pueda crear esa base si no
+   existe y administrar sus objetos. No use esas credenciales en LIQUORIX.
+3. Desde la vista del servidor, sin seleccionar otra base, abra **Importar**,
+   seleccione el archivo `.sql`, conserve el formato SQL y ejecute la importación.
+   El propio archivo ejecuta `CREATE DATABASE IF NOT EXISTS` y `USE`.
+4. Si la base ya existe y se requiere una reconstrucción totalmente limpia,
+   elimínela previamente solo después de verificar de forma independiente host,
+   puerto y nombre. Esa acción no forma parte del respaldo ni de LIQUORIX.
+5. Confirme que phpMyAdmin no reportó errores y continúe con las verificaciones
+   esenciales y la rotación del epoch descritas abajo. Si el archivo supera el
+   límite de carga configurado en PHP, use el cliente `mysql` con el mismo control
+   administrativo en lugar de fragmentar o editar el respaldo.
+
 ## Procedimiento sobre la base objetivo
 
 1. **Detener el backend.** Manténgalo detenido hasta completar todas las
@@ -70,9 +88,14 @@ No reutilice el archivo `.env` de producción para el ensayo ni incorpore archiv
    autorización del incidente.
 3. **Verificar nuevamente el respaldo.** Use la misma copia que superó el ensayo y
    vuelva a comprobar tamaño, integridad y compatibilidad.
-4. **Crear o recrear la base.** La eliminación, si resulta indispensable, debe
-   dirigirse mediante un nombre literal previamente revisado. Créela con
-   `utf8mb4`, colación compatible y los privilegios mínimos de LIQUORIX.
+4. **Preparar el destino.** Si la base no existe, el respaldo autocontenido la crea
+   con el juego de caracteres y la colación registrados por MariaDB al generarlo, y
+   luego la selecciona con `USE`. Si existe, `CREATE DATABASE IF NOT EXISTS` no la
+   altera y las sentencias `DROP TABLE IF EXISTS` de `mysqldump` reemplazan las
+   tablas incluidas; pueden permanecer objetos ajenos al respaldo. Para una
+   recuperación total limpia, cualquier eliminación previa debe ser una decisión
+   expresa del técnico, dirigida a un nombre literal verificado. El respaldo nunca
+   ejecuta `DROP DATABASE`.
 5. **Importar el SQL.** Ejecute el cliente `mysql` contra el nombre confirmado. No
    exponga credenciales en argumentos ni redirija errores a una ubicación pública.
 6. **Verificar integridad básica.** Confirme como mínimo la existencia de

@@ -31,7 +31,7 @@ Desarrollar una aplicación web segura, modular y auditable que permita controla
 
 ## 5. Alcance del sistema
 
-El sistema cubrirá una sola sucursal e incluirá autenticación; usuarios, roles y permisos; categorías, marcas y unidades de medida; bebidas y productos complementarios autorizados; clientes y proveedores; compras; inventario; ventas; facturación interna; pagos en efectivo, tarjeta, transferencia o combinados; descuentos controlados mediante permisos; impuestos configurables; caja; dashboard con al menos tres gráficos; al menos ocho reportes; bitácora; respaldos, restauraciones y configuración general. Todas las funciones del frontend se comunicarán con el backend mediante una API REST con JSON.
+El sistema cubrirá una sola sucursal e incluirá autenticación; usuarios, roles y permisos; categorías, marcas y unidades de medida; bebidas y productos complementarios autorizados; clientes y proveedores; compras; inventario; ventas; facturación interna; pagos en efectivo, tarjeta, transferencia o combinados; descuentos de venta limitados en el backend mediante la configuración `descuento_maximo`; impuestos configurables; caja; dashboard con al menos tres gráficos; al menos ocho reportes; bitácora; respaldos, restauraciones y configuración general. Todas las funciones del frontend se comunicarán con el backend mediante una API REST con JSON.
 
 ## 6. Funcionalidades fuera del alcance
 
@@ -60,7 +60,7 @@ Dispone de acceso administrativo según los permisos asignados. Puede gestionar 
 
 ### Vendedor
 
-Puede iniciar sesión, consultar productos y clientes, operar el punto de venta, registrar pagos, imprimir comprobantes y gestionar su caja. Los descuentos, anulaciones u otras acciones sensibles solo estarán disponibles si posee el permiso correspondiente.
+Puede iniciar sesión, consultar productos y clientes, operar el punto de venta, registrar pagos, imprimir comprobantes y gestionar su caja. La creación de ventas requiere `ventas.crear` y sus descuentos se limitan en el backend mediante `descuento_maximo`; las anulaciones y demás acciones sensibles requieren el permiso específico definido para cada operación.
 
 ### Consulta
 
@@ -130,7 +130,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 **Prioridad:** Alta.
 
-**Criterio básico de aceptación:** El cambio de rol modifica los accesos del usuario en su siguiente sesión sin alterar su historial.
+**Criterio básico de aceptación:** El cambio de rol modifica los permisos efectivos reconstruidos por el backend en las solicitudes posteriores, sin alterar el historial del usuario. El frontend actualiza su identidad al restaurar la sesión mediante `/auth/me`; la autorización definitiva no depende de roles o permisos históricos contenidos en el JWT.
 
 ### 9.3 Roles y permisos
 
@@ -156,7 +156,7 @@ Puede visualizar la información operativa, dashboard y reportes para los que te
 
 ### RF-009 — Autorización de operaciones
 
-**Descripción:** El backend verificará el permiso requerido antes de ejecutar cada operación protegida, incluidas las de descuento, ajuste, anulación, respaldo y restauración.
+**Descripción:** El backend verificará el permiso requerido antes de ejecutar cada operación protegida, incluidas la creación de ventas, los ajustes, las anulaciones, los respaldos y las restauraciones. Los descuentos de venta no poseen un permiso independiente: se aceptan dentro de una venta autorizada y se limitan en el backend mediante `descuento_maximo`.
 
 **Actor principal:** Sistema.
 

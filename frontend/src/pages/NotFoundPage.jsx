@@ -10,7 +10,7 @@ export function NotFoundPage() {
       <span className="result-code">404</span>
       <h1>Página no encontrada</h1>
       <p>La dirección que intentas visitar no existe en Liquorix.</p>
-      <Link className="button button--primary" to={isAuthenticated ? '/' : '/login'}>
+      <Link className="button button--primary" to={isAuthenticated ? '/dashboard' : '/login'}>
         {isAuthenticated ? 'Volver al inicio' : 'Ir al acceso'}
       </Link>
     </div>

@@ -1,5 +1,23 @@
 # Estado de implementación del frontend
 
+## Autenticación y restauración de sesión
+
+Después del login, el frontend conserva el token, el usuario, los roles y los
+permisos en `localStorage` bajo la clave versionada de LIQUORIX. Al cargar la
+aplicación, `AuthProvider` lee esa sesión, instala el token en el cliente API y
+consulta `GET /auth/me`. El backend revalida firma, expiración, usuario, bloqueo,
+`session_epoch`, roles y permisos efectivos; la respuesta vigente reemplaza los
+roles y permisos conservados localmente.
+
+Mientras se completa la revalidación, las rutas protegidas muestran el estado de
+carga. Un error de conexión permite reintentar sin considerar autenticado al
+usuario. Un `401` elimina la información local y redirige a `/login`; el mismo flujo
+global se aplica a solicitudes posteriores y a tokens invalidados por rotación del
+epoch. El evento `storage` sincroniza la sesión cuando otra pestaña inicia o elimina
+la sesión. El logout normal llama primero al backend y solo elimina la sesión cuando
+la operación es aceptada o cuando el token ya no es válido; una caja abierta produce
+el conflicto de negocio correspondiente.
+
 ## Respaldos
 
 La ruta `/backups`, protegida por `respaldos.ver`, muestra historial y filtros.
@@ -27,7 +45,7 @@ requieren confirmación y usan `PATCH /:id/status`. No existe eliminación físi
 
 ## Catálogo público
 
-La ruta `/catalog`, disponible con o sin sesión, utiliza una plantilla pública con
+La ruta `/`, disponible con o sin sesión, utiliza una plantilla pública con
 header, sidebar adaptable, body y footer sin navegación administrativa. Consulta el
 endpoint independiente `/api/v1/public/catalog`, presenta cards, placeholder local,
 búsqueda remota, categoría, marca, paginación y estados `Disponible`/`Agotado` sin
@@ -79,12 +97,28 @@ de Ventas. Cuando el control está activo y falta una caja abierta, muestra una
 indicación preventiva y ofrece acceso a Caja únicamente con `caja.abrir`; la
 confirmación del backend continúa siendo la autoridad final.
 
+La consulta usa alcance propio por defecto: un usuario con `ventas.ver` lista y
+consulta únicamente sus ventas y no puede forzar el identificador de otro vendedor.
+Cuando además posee `ventas.supervisar`, la página activa el alcance global, obtiene
+el catálogo autorizado de vendedores y presenta el filtro por vendedor; también
+permite abrir el detalle de ventas de otros responsables. La interfaz deriva esta
+capacidad del permiso efectivo, no del nombre del rol, y el backend vuelve a imponer
+el alcance en cada solicitud.
+
 ## Caja
 
 Las rutas `/cash` y `/cash/:id` permiten administrar la caja propia: apertura,
 ingresos y egresos manuales, movimientos de ventas y anulaciones, cierre e
 historial. El monto esperado mostrado durante el turno es una ayuda calculada con
 movimientos reales; el backend conserva la autoridad sobre el cierre y diferencia.
+
+La supervisión final se encuentra en `/cash/closures` y
+`/cash/closures/:id`, ambas protegidas por `caja.supervisar`. La lista consulta solo
+cajas cerradas y permite filtrar por responsable, fechas de cierre y resultado
+`faltante`, `sobrante` o `cuadrada`, además de paginación. Presenta responsable,
+apertura, cierre, montos esperado y contado y diferencia. El detalle autorizado
+muestra la caja cerrada y sus movimientos aunque pertenezca a otro usuario. Estas
+rutas no amplían el alcance propio de `/cash` ni permiten modificar cajas cerradas.
 
 ## Inventario
 

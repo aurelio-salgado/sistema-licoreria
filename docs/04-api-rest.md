@@ -305,6 +305,18 @@ nombre UUID v4 y extensión JPEG, PNG o WebP desde `storage/products`. Verifica 
 tamaño máximo de 2 MB y ubicación; usa `nosniff`, disposición `inline` y `404`
 genérico. No publica `storage` ni permite acceder a respaldos.
 
+`GET /api/v1/public/catalog/brand-images/:filename` es el equivalente público para
+logos de marcas almacenados en `storage/brands`. No requiere JWT. `filename` debe
+ser una referencia con UUID v4 y extensión `.jpg`, `.jpeg`, `.png` o `.webp`; el
+servicio resuelve el archivo exclusivamente dentro del storage de marcas, exige que
+sea un archivo regular no vacío de hasta 2 MB y comprueba que la firma corresponda
+a la extensión. Una referencia inválida, traversal, archivo inexistente, corrupto o
+fuera del límite responde con el mismo `404` genérico de imágenes. Una lectura
+válida responde `200` con el binario y el `Content-Type` derivado de la extensión,
+`Content-Disposition: inline`, `Cross-Origin-Resource-Policy: cross-origin`,
+`X-Content-Type-Options: nosniff` y caché pública inmutable. La ruta no enumera ni
+publica el directorio físico.
+
 | Método | Endpoint | Permiso | Descripción |
 | --- | --- | --- | --- |
 | PUT | `/products/:id/image` | `productos.editar` | Carga o reemplaza la imagen local. |
@@ -681,8 +693,10 @@ El listado admite exclusivamente `page`, `limit`, `tipo`, `operacion`, `estado`,
 argumentos ni errores técnicos. Descarga y restauración vuelven a comprobar
 ubicación, archivo regular, tamaño, formato y SHA-256.
 
-La creación usa `.sql.part`, `mysqldump` con `shell:false`, validación y renombrado
-atómico. La restauración crea un preventivo y usa `mysql` mediante stdin. En la
+La creación usa `.sql.part`, `mysqldump --databases` con `shell:false`, validación
+estricta de `DB_NAME` y renombrado atómico. El SQL incluye la creación condicional
+y selección de la base configurada, sin eliminarla. La restauración crea un
+preventivo y usa `mysql` mediante stdin. En la
 después del import rota `jwt_session_epoch` antes de registrar éxito y abandonar
 mantenimiento. Un token sin el claim `session_epoch` o con un valor anterior recibe
 el mismo `401 No autorizado`, sin revelar el valor vigente.

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FormField } from '../CatalogUi'
+import { filterInventoryByProductName } from '../../utils/inventorySearch'
 
 function toDateTimeLocal(value) {
   const match = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/.exec(String(value ?? ''))
@@ -69,6 +70,11 @@ function decimalError(value, label, scale, positive = false) {
 export function PurchaseItemForm({ item, products, busy, onCancel, onSubmit }) {
   const [values, setValues] = useState({ id_producto: item?.producto?.id_producto ? String(item.producto.id_producto) : '', cantidad: item?.cantidad ?? '', costo_unitario: item?.costo_unitario ?? '', descuento: item?.descuento ?? '0' })
   const [errors, setErrors] = useState({})
+  const [productSearch, setProductSearch] = useState('')
+  const filteredProducts = useMemo(
+    () => filterInventoryByProductName(products, productSearch),
+    [productSearch, products],
+  )
   const selectedProduct = products.find((product) => String(product.id_producto) === values.id_producto)
   const setValue = (field, value) => setValues((current) => ({ ...current, [field]: value }))
   const submit = (event) => {
@@ -88,7 +94,8 @@ export function PurchaseItemForm({ item, products, busy, onCancel, onSubmit }) {
 
   return <form className="purchase-form" onSubmit={submit} noValidate>
     <div className="purchase-form-grid">
-      <div className="purchase-form-span-2"><FormField label="Producto" name="id_producto" error={errors.id_producto} help={selectedProduct ? `Unidad: ${selectedProduct.unidad?.nombre} (${selectedProduct.unidad?.abreviatura}) · permite decimales: ${selectedProduct.unidad?.permite_decimales ? 'Sí' : 'No'}` : undefined}><select id="id_producto" className="form-control" value={values.id_producto} disabled={busy} onChange={(event) => setValue('id_producto', event.target.value)}><option value="">Selecciona un producto</option>{products.map((product) => <option key={product.id_producto} value={product.id_producto}>{product.codigo} · {product.nombre}</option>)}</select></FormField></div>
+      <div className="purchase-form-span-2"><FormField label="Buscar producto" name="purchase-product-search"><input id="purchase-product-search" className="form-control" type="search" placeholder="Buscar producto por nombre..." value={productSearch} disabled={busy} onChange={(event) => { setProductSearch(event.target.value); setValue('id_producto', '') }} /></FormField></div>
+      <div className="purchase-form-span-2"><FormField label="Producto" name="id_producto" error={errors.id_producto} help={selectedProduct ? `Unidad: ${selectedProduct.unidad?.nombre} (${selectedProduct.unidad?.abreviatura}) · permite decimales: ${selectedProduct.unidad?.permite_decimales ? 'Sí' : 'No'}` : productSearch.trim() && !filteredProducts.length ? 'No se encontraron productos.' : undefined}><select id="id_producto" className="form-control" value={values.id_producto} disabled={busy} onChange={(event) => setValue('id_producto', event.target.value)}><option value="">Selecciona un producto</option>{filteredProducts.map((product) => <option key={product.id_producto} value={product.id_producto}>{product.codigo} · {product.nombre}</option>)}</select></FormField></div>
       <FormField label="Cantidad" name="cantidad" error={errors.cantidad} help="Mayor que cero · máximo 3 decimales"><input id="cantidad" className="form-control" type="number" min="0.001" step={selectedProduct?.unidad?.permite_decimales === false ? '1' : '0.001'} value={values.cantidad} disabled={busy} onChange={(event) => setValue('cantidad', event.target.value)} /></FormField>
       <FormField label="Costo unitario" name="costo_unitario" error={errors.costo_unitario} help="Importe no negativo"><input id="costo_unitario" className="form-control" type="number" min="0" step="0.01" value={values.costo_unitario} disabled={busy} onChange={(event) => setValue('costo_unitario', event.target.value)} /></FormField>
       <FormField label="Descuento" name="descuento" error={errors.descuento} help="Importe monetario, no porcentaje"><input id="descuento" className="form-control" type="number" min="0" step="0.01" value={values.descuento} disabled={busy} onChange={(event) => setValue('descuento', event.target.value)} /></FormField>
