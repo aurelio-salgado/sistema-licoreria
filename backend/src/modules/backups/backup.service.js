@@ -12,6 +12,18 @@ const defaultSessionEpoch = require('../../services/sessionEpoch');
 
 function httpError(statusCode, message) { const error = new Error(message); error.statusCode = statusCode; return error; }
 
+function sanitizeDiagnostic(value) {
+  let message = String(value || 'Error sin mensaje');
+  const privateValues = [env.database.password, env.backups.storagePath, process.cwd()]
+    .filter((item) => typeof item === 'string' && item.length > 0);
+  for (const privateValue of privateValues) message = message.split(privateValue).join('[dato privado]');
+  return message
+    .replace(/--defaults-extra-file=\S+/gi, '--defaults-extra-file=[dato privado]')
+    .replace(/(password\s*[=:]\s*)\S+/gi, '$1[dato privado]')
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [dato privado]')
+    .slice(0, 500);
+}
+
 function publicRecord(row) {
   return {
     id_respaldo: row.id_respaldo, nombre_archivo: row.nombre_archivo,
@@ -30,6 +42,20 @@ function createBackupService(dependencies = {}) {
   const processTools = dependencies.processTools || defaultProcessTools;
   const repository = dependencies.repository || defaultRepository;
   const sessionInvalidator = dependencies.sessionInvalidator || defaultSessionEpoch.rotate;
+  const logger = dependencies.logger || console;
+
+  function logRestoreFailure(error, context) {
+    logger.error('[backups.restore] fallo controlado', {
+      etapa: context.stage,
+      tipo: error?.name || 'Error',
+      codigo: error?.code || null,
+      sqlState: error?.sqlState || null,
+      mensaje: sanitizeDiagnostic(error?.message),
+      importIniciado: context.importStarted,
+      poolRenovado: context.poolRenewed,
+      epochRotado: context.epochRotated,
+    });
+  }
 
   function safePath(storedPath) {
     const root = path.resolve(env.backups.storagePath);
@@ -136,54 +162,119 @@ function createBackupService(dependencies = {}) {
   }
 
   async function restore(rawId, body, actor) {
+    let stage = 'validando_origen';
+    let importStarted = false;
+    let poolRenewed = false;
+    let epochRotated = false;
     validation.restore(body);
     const sourceId = validation.id(rawId);
     const source = await repository.findById(pool, sourceId);
     if (!source) throw httpError(404, 'Respaldo no encontrado');
-    const checkedSource = await verify(source);
+    let checkedSource;
+    try {
+      checkedSource = await verify(source);
+    } catch (verificationError) {
+      logRestoreFailure(verificationError, { stage, importStarted, poolRenewed, epochRotated });
+      await repository.audit(pool, {
+        userId: actor.userId, ipAddress: actor.ipAddress, action: 'restaurar_respaldo',
+        id: sourceId, result: 'fallido', data: { id_respaldo_origen: sourceId, etapa: 'validacion_origen' },
+      }).catch(() => {});
+      throw verificationError;
+    }
     if (!coordinator.beginRestore()) throw httpError(409, 'Existen operaciones incompatibles en curso');
 
     let preventive;
-    let restorationId = null;
-    let importStarted = false;
-    let epochRotated = false;
+    let recoveredRestorationId = null;
     try {
+      stage = 'creando_preventivo';
       preventive = await generate('preventivo', actor);
+      stage = 'validando_preventivo';
       await verify(preventive);
-      restorationId = await repository.create(pool, {
-        filename: source.nombre_archivo, safePath: source.ruta_segura, type: source.tipo,
-        operation: 'restauracion', userId: actor.userId, sourceId, preventiveId: preventive.id_respaldo,
-      });
+      await repository.audit(pool, {
+        userId: actor.userId, ipAddress: actor.ipAddress, action: 'iniciar_restauracion',
+        id: sourceId, result: 'exitoso', data: { id_respaldo_origen: sourceId, respaldo_preventivo_creado: true },
+      }).catch(() => {});
+      stage = 'importando';
       importStarted = true;
       await processTools.restore(checkedSource.file);
+      stage = 'renovando_pool';
       await pool.renew();
+      poolRenewed = true;
+      stage = 'verificando_base';
       if (!(await repository.verifyEssentialTables(pool))) throw new Error('Verificacion posterior incompleta');
+
+      stage = 'reconstruyendo_metadata';
+      const actorAvailable = await repository.userExists(pool, actor.userId);
+      const sourceOwnerAvailable = await repository.userExists(pool, source.id_usuario);
+      let recoveredSourceId = null;
+      let recoveredPreventiveId = null;
+
+      if (sourceOwnerAvailable) {
+        recoveredSourceId = await repository.createRecovered(pool, {
+          filename: source.nombre_archivo, safePath: source.ruta_segura,
+          size: source.tamano_bytes, checksum: source.checksum_sha256,
+          format: source.formato_version, type: source.tipo, operation: 'respaldo',
+          userId: source.id_usuario, message: 'Respaldo de origen validado para restauracion',
+          available: true,
+        });
+      }
+      if (actorAvailable) {
+        recoveredPreventiveId = await repository.createRecovered(pool, {
+          filename: preventive.nombre_archivo, safePath: preventive.ruta_segura,
+          size: preventive.tamano_bytes, checksum: preventive.checksum_sha256,
+          format: preventive.formato_version, type: 'preventivo', operation: 'respaldo',
+          userId: actor.userId, message: 'Respaldo preventivo creado correctamente',
+          available: true,
+        });
+      }
+
+      stage = 'rotando_epoch';
       await sessionInvalidator();
       epochRotated = true;
 
-      await repository.succeed(pool, preventive.id_respaldo, {
-        size: preventive.tamano_bytes, checksum: preventive.checksum_sha256,
-        message: 'Respaldo preventivo creado correctamente',
-      });
-      restorationId = await repository.create(pool, {
-        filename: source.nombre_archivo, safePath: source.ruta_segura, type: source.tipo,
-        operation: 'restauracion', userId: actor.userId, sourceId, preventiveId: preventive.id_respaldo,
-      });
-      await repository.completeRestoration(pool, restorationId, 'Restauracion completada correctamente');
-      await repository.audit(pool, {
-        userId: actor.userId, ipAddress: actor.ipAddress, action: 'restaurar_respaldo',
-        id: restorationId, result: 'exitoso', data: { id_respaldo_origen: sourceId, id_respaldo_preventivo: preventive.id_respaldo, sesiones_globales_invalidadas: true },
-      });
-      return publicRecord(await repository.findById(pool, restorationId));
-    } catch {
-      if (restorationId) {
-        await repository.fail(pool, restorationId, 'La restauracion no pudo completarse').catch(() => {});
+      if (actorAvailable) {
+        stage = 'auditando';
+        recoveredRestorationId = await repository.createRecovered(pool, {
+          filename: source.nombre_archivo, safePath: source.ruta_segura,
+          size: source.tamano_bytes, checksum: null, format: null,
+          type: source.tipo, operation: 'restauracion', userId: actor.userId,
+          message: 'Restauracion completada correctamente', available: false,
+          sourceId: recoveredSourceId, preventiveId: recoveredPreventiveId,
+        });
         await repository.audit(pool, {
           userId: actor.userId, ipAddress: actor.ipAddress, action: 'restaurar_respaldo',
-          id: restorationId, result: 'fallido', data: { id_respaldo_origen: sourceId, id_respaldo_preventivo: preventive?.id_respaldo || null },
+          id: recoveredRestorationId, result: 'exitoso',
+          data: { respaldo_origen_reconstruido: Boolean(recoveredSourceId), id_respaldo_preventivo: recoveredPreventiveId, sesiones_globales_invalidadas: true },
+        }).catch(() => {});
+        return publicRecord(await repository.findById(pool, recoveredRestorationId));
+      }
+
+      return {
+        id_respaldo: null, nombre_archivo: source.nombre_archivo, tamano_bytes: source.tamano_bytes,
+        tipo: source.tipo, operacion: 'restauracion', estado: 'exitoso', archivo_disponible: false,
+        usuario: null, mensaje_resultado: 'Restauracion completada; la metadata del ejecutor no pudo persistirse',
+        fecha_operacion: new Date().toISOString(), fecha_finalizacion: new Date().toISOString(),
+        id_respaldo_origen: recoveredSourceId, id_respaldo_preventivo: null,
+      };
+    } catch (restoreError) {
+      logRestoreFailure(restoreError, { stage, importStarted, poolRenewed, epochRotated });
+      if (!importStarted) {
+        await repository.audit(pool, {
+          userId: actor.userId, ipAddress: actor.ipAddress, action: 'restaurar_respaldo',
+          id: sourceId, result: 'fallido', data: { id_respaldo_origen: sourceId, etapa: 'respaldo_preventivo' },
+        }).catch(() => {});
+        throw httpError(500, 'No fue posible preparar la restauracion');
+      }
+      if (recoveredRestorationId && await repository.userExists(pool, actor.userId).catch(() => false)) {
+        await repository.audit(pool, {
+          userId: actor.userId, ipAddress: actor.ipAddress, action: 'restaurar_respaldo',
+          id: recoveredRestorationId, result: 'fallido', data: { etapa: 'posterior_importacion' },
         }).catch(() => {});
       }
-      throw httpError(500, 'La restauracion no pudo completarse; se conservo el respaldo preventivo');
+      if (epochRotated) {
+        throw httpError(409, 'La base fue restaurada y las sesiones invalidadas, pero no pudo completarse la metadata final; se requiere revision administrativa');
+      }
+      throw httpError(409, 'La restauracion no pudo verificarse; el sistema permanece en mantenimiento y requiere revision administrativa');
     } finally {
       if (!importStarted || epochRotated) coordinator.endRestore();
     }

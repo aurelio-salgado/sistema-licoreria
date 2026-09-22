@@ -117,23 +117,61 @@ async function restore(source) {
   ));
 }
 
-async function inspect(file) {
+function extractDatabaseTarget(line, keyword) {
+  const versionedIfNotExists = String.raw`(?:\/\*!\d+\s+IF\s+NOT\s+EXISTS\s*\*\/\s*)?`;
+  const regularIfNotExists = String.raw`(?:IF\s+NOT\s+EXISTS\s+)?`;
+  const prefix = keyword === 'CREATE'
+    ? String.raw`^\s*CREATE\s+DATABASE\s+${regularIfNotExists}${versionedIfNotExists}`
+    : String.raw`^\s*USE\s+`;
+  const match = new RegExp(`${prefix}(?:\x60([^\x60]+)\x60|([A-Za-z][A-Za-z0-9_]{0,63}))`, 'i').exec(line);
+  return match ? match[1] || match[2] : null;
+}
+
+async function inspect(file, expectedDatabase = env.database.name) {
   const stat = await fsp.stat(file);
   if (!stat.isFile() || stat.size === 0) throw new Error('El archivo de respaldo no es valido');
 
+  const databaseName = validateDatabaseName(expectedDatabase);
   const hash = crypto.createHash('sha256');
   const input = fs.createReadStream(file);
-  let tail = '';
+  let pending = '';
   let schemaMarker = false;
   let checksumMarker = false;
+  let createDatabaseFound = false;
+  let useDatabaseFound = false;
   for await (const chunk of input) {
     hash.update(chunk);
-    const sample = tail + chunk.toString('utf8');
-    schemaMarker ||= /CREATE TABLE(?: IF NOT EXISTS)? [`']?respaldos[`']?/i.test(sample);
-    checksumMarker ||= /checksum_sha256/i.test(sample);
-    tail = sample.slice(-512);
+    pending += chunk.toString('utf8');
+    const lines = pending.split(/\r?\n/);
+    pending = lines.pop() || '';
+    for (const line of lines) {
+      schemaMarker ||= /CREATE TABLE(?: IF NOT EXISTS)? [`']?respaldos[`']?/i.test(line);
+      checksumMarker ||= /checksum_sha256/i.test(line);
+      const createdDatabase = extractDatabaseTarget(line, 'CREATE');
+      const usedDatabase = extractDatabaseTarget(line, 'USE');
+      if (createdDatabase) {
+        createDatabaseFound = true;
+        if (createdDatabase !== databaseName) throw new Error('El respaldo pertenece a otra base de datos');
+      }
+      if (usedDatabase) {
+        useDatabaseFound = true;
+        if (usedDatabase !== databaseName) throw new Error('El respaldo pertenece a otra base de datos');
+      }
+    }
   }
-  if (!schemaMarker || !checksumMarker) {
+  schemaMarker ||= /CREATE TABLE(?: IF NOT EXISTS)? [`']?respaldos[`']?/i.test(pending);
+  checksumMarker ||= /checksum_sha256/i.test(pending);
+  const finalCreatedDatabase = extractDatabaseTarget(pending, 'CREATE');
+  const finalUsedDatabase = extractDatabaseTarget(pending, 'USE');
+  if (finalCreatedDatabase) {
+    createDatabaseFound = true;
+    if (finalCreatedDatabase !== databaseName) throw new Error('El respaldo pertenece a otra base de datos');
+  }
+  if (finalUsedDatabase) {
+    useDatabaseFound = true;
+    if (finalUsedDatabase !== databaseName) throw new Error('El respaldo pertenece a otra base de datos');
+  }
+  if (!schemaMarker || !checksumMarker || !createDatabaseFound || !useDatabaseFound) {
     throw new Error('El formato del respaldo no es compatible con LIQUORIX');
   }
   return { size: stat.size, checksum: hash.digest('hex') };

@@ -43,6 +43,11 @@ export function AuthProvider({ children }) {
     navigate('/login', { replace: true, state: { loggedOut: true } })
   }, [clearSession, navigate])
 
+  const completeRestorationSession = useCallback(() => {
+    clearSession()
+    navigate('/login', { replace: true, state: { restorationCompleted: true } })
+  }, [clearSession, navigate])
+
   const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout', undefined, { handleUnauthorized: false })
@@ -151,6 +156,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
       restoreSession,
+      completeRestorationSession,
       hasPermission,
     }),
     [
@@ -160,6 +166,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
       restoreSession,
+      completeRestorationSession,
       hasPermission,
     ],
   )

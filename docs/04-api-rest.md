@@ -691,13 +691,15 @@ Los reportes JSON usan `page` (1), `limit` (20, máximo 100) y únicamente los f
 El listado admite exclusivamente `page`, `limit`, `tipo`, `operacion`, `estado`,
 `fecha_desde` y `fecha_hasta`. Nunca devuelve rutas, checksum completo, credenciales,
 argumentos ni errores técnicos. Descarga y restauración vuelven a comprobar
-ubicación, archivo regular, tamaño, formato y SHA-256.
+ubicación, archivo regular, tamaño, formato, SHA-256 y que las instrucciones
+`CREATE DATABASE`/`USE` correspondan exactamente a `DB_NAME`.
 
 La creación usa `.sql.part`, `mysqldump --databases` con `shell:false`, validación
 estricta de `DB_NAME` y renombrado atómico. El SQL incluye la creación condicional
 y selección de la base configurada, sin eliminarla. La restauración crea un
-preventivo y usa `mysql` mediante stdin. En la
-después del import rota `jwt_session_epoch` antes de registrar éxito y abandonar
+preventivo y usa `mysql` mediante stdin. Después del import renueva el pool,
+verifica la identidad de la base, las tablas críticas y consultas mínimas, reconstruye
+la metadata con identificadores nuevos y rota `jwt_session_epoch` antes de abandonar
 mantenimiento. Un token sin el claim `session_epoch` o con un valor anterior recibe
 el mismo `401 No autorizado`, sin revelar el valor vigente.
 

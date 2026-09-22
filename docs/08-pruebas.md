@@ -45,6 +45,7 @@ git diff --check
 | Inventario | `inventory.service.test.js` | Consultas, ajustes, unidades, no negatividad, referencias, bitácora y rollback. |
 | Ventas | `sale.service.test.js`, `sale.access.test.js` | Preparación, lectura de pagos, estado operativo, confirmación y alcance propio/global. |
 | Pagos | `sale.service.test.js` | Métodos activos, pagos históricos, efectivo, pagos combinados, monto recibido y cambio. |
+| Comprobante de venta | Verificación frontend manual | Vista exclusiva para ventas completadas, reimpresión desde el detalle, pagos simples/combinados y aislamiento mediante `@media print`. |
 | Descuentos | `sale.service.test.js`, `setting.validation.test.js` | Límite `descuento_maximo`, frontera permitida y rechazo de manipulación. |
 | Alcance de ventas | `sale.access.test.js` | Ventas propias por defecto, filtro protegido y supervisión mediante `ventas.supervisar`. |
 | Anulación de ventas | `sale.service.test.js` | Inventario, pagos históricos, compensación de efectivo, caja del anulador, idempotencia y rollback. |
@@ -89,7 +90,7 @@ Las pruebas backend verifican acceso sin middleware JWT, proyección cerrada, di
 
 ### Respaldos y restauración
 
-Los procesos externos se sustituyen por stubs. Se cubren confirmación, SHA-256, metadata pública, path traversal, concurrencia, mantenimiento, emisión/comparación/rotación del epoch y no exposición en Settings. La generación comprueba `mysqldump --databases`, ausencia de `--add-drop-database`, nombre validado y checksum del SQL final.
+Los procesos externos se sustituyen por stubs. Se cubren confirmación, permiso dedicado, archivo ausente, SHA-256/tamaño, metadata pública, path traversal, destino `DB_NAME`, respaldo preventivo, reconstrucción con IDs nuevos, ejecutor ausente, concurrencia, mantenimiento, emisión/comparación/rotación del epoch y no exposición en Settings. La generación comprueba `mysqldump --databases`, ausencia de `--add-drop-database`, nombre validado y checksum del SQL final.
 
 Una recuperación real solo debe probarse manualmente contra una base temporal aislada. `rotate-session-epoch` se prueba con dobles: éxito, fallo, cierre del pool, rechazo de argumentos y ausencia del UUID. `sessionEpoch` cubre persistencia verificada, transacción, rollback e inicialización idempotente.
 
@@ -133,7 +134,7 @@ Los scripts versionados contienen controles específicos del dataset esperado. N
 
 Los siguientes marcadores indican evidencia todavía necesaria; no afirman que la prueba ya fue ejecutada:
 
-[CAPTURA PENDIENTE: ejecución completa de npm --prefix backend test mostrando 211 pruebas backend aprobadas y 0 fallidas]
+[CAPTURA PENDIENTE: ejecución completa de npm --prefix backend test mostrando 218 pruebas backend aprobadas y 0 fallidas]
 
 [CAPTURA PENDIENTE: login válido, rechazo uniforme de credenciales y bloqueo temporal sin mostrar contraseñas ni tokens]
 

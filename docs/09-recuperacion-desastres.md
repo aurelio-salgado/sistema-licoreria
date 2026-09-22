@@ -29,6 +29,26 @@ cliente `mysql`.
 El respaldo preventivo no se denomina automático. La versión actual no genera
 respaldos automáticos ni programados.
 
+## Restauración controlada desde LIQUORIX
+
+La interfaz de Respaldos permite a un usuario con `respaldos.restaurar` seleccionar
+exclusivamente un archivo registrado, íntegro y disponible en el almacenamiento
+privado. La operación exige escribir `RESTAURAR`, valida tamaño, SHA-256, formato y
+destino `DB_NAME`, activa mantenimiento y crea y verifica un respaldo preventivo
+antes de iniciar el cliente `mysql` mediante entrada estándar.
+
+Después del import, LIQUORIX renueva el pool, comprueba la base y tablas críticas,
+reconstruye la metadata con IDs pertenecientes al estado restaurado y rota
+`jwt_session_epoch`. Si el ejecutor ya no existe en el snapshot, no se inventa otro
+responsable: la restauración verificada puede concluir, pero la metadata y bitácora
+que requieren esa FK quedan limitadas y deben revisarse administrativamente.
+
+La importación no es atómica: las sentencias DDL pueden haber aplicado cambios
+parciales si el cliente o MariaDB fallan. Un fallo después de comenzar el import
+conserva el mantenimiento mientras no se hayan completado la verificación y rotación;
+requiere revisión administrativa y reinicio controlado, no una recuperación automática
+dentro de la misma solicitud.
+
 ## Condiciones previas
 
 1. Identifique al responsable autorizado y abra un registro administrativo del

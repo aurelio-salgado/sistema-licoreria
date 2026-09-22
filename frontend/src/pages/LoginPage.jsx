@@ -89,6 +89,8 @@ export function LoginPage() {
             <p>Inicia sesión para continuar en Liquorix.</p>
           </div>
 
+          {location.state?.restorationCompleted && <div className="inline-alert inline-alert--success" role="status">La restauración finalizó correctamente. Por seguridad, inicia sesión nuevamente.</div>}
+
           <label className="field">
             <span>Usuario</span>
             <input

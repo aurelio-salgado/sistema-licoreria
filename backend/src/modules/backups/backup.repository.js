@@ -3,11 +3,32 @@ function where(f){const c=[],v=[];for(const [value,sql] of [[f.type,'r.tipo=?'],
 async function list(db,f){const w=where(f),offset=(f.page-1)*f.limit;const [[rows],[count]]=await Promise.all([db.execute(`SELECT ${PUBLIC_COLUMNS} FROM respaldos r INNER JOIN usuarios u ON u.id_usuario=r.id_usuario ${w.sql} ORDER BY r.fecha_operacion DESC,r.id_respaldo DESC LIMIT ? OFFSET ?`,[...w.values,f.limit,offset]),db.execute(`SELECT COUNT(*) total FROM respaldos r ${w.sql}`,w.values)]);return{rows,total:Number(count[0].total)};}
 async function findById(db,id){const [rows]=await db.execute(`SELECT ${PUBLIC_COLUMNS},r.ruta_segura,r.checksum_sha256,r.formato_version FROM respaldos r INNER JOIN usuarios u ON u.id_usuario=r.id_usuario WHERE r.id_respaldo=? LIMIT 1`,[id]);return rows[0]||null;}
 async function create(db,d){const [result]=await db.execute(`INSERT INTO respaldos(nombre_archivo,ruta_segura,tamano_bytes,tipo,operacion,estado,id_usuario,mensaje_resultado,fecha_operacion,archivo_disponible,id_respaldo_origen,id_respaldo_preventivo) VALUES(?,?,NULL,?,?,'en_proceso',?,NULL,NOW(),FALSE,?,?)`,[d.filename,d.safePath,d.type,d.operation,d.userId,d.sourceId||null,d.preventiveId||null]);return result.insertId;}
+async function createRecovered(db,d){const [result]=await db.execute(`INSERT INTO respaldos(nombre_archivo,ruta_segura,tamano_bytes,tipo,operacion,estado,id_usuario,mensaje_resultado,fecha_operacion,fecha_finalizacion,checksum_sha256,formato_version,archivo_disponible,id_respaldo_origen,id_respaldo_preventivo) VALUES(?,?,?,?,?,'exitoso',?,?,NOW(),NOW(),?,?,?, ?,?)`,[d.filename,d.safePath,d.size,d.type,d.operation,d.userId,d.message,d.checksum||null,d.format||null,Boolean(d.available),d.sourceId||null,d.preventiveId||null]);return result.insertId;}
 async function succeed(db,id,d){await db.execute(`UPDATE respaldos SET tamano_bytes=?,checksum_sha256=?,formato_version='sql-mariadb',archivo_disponible=TRUE,estado='exitoso',mensaje_resultado=?,fecha_finalizacion=NOW(),id_respaldo_preventivo=COALESCE(?,id_respaldo_preventivo) WHERE id_respaldo=?`,[d.size,d.checksum,d.message,d.preventiveId||null,id]);}
 async function fail(db,id,message){await db.execute(`UPDATE respaldos SET estado='fallido',archivo_disponible=FALSE,mensaje_resultado=?,fecha_finalizacion=NOW() WHERE id_respaldo=?`,[message,id]);}
 async function completeRestoration(db,id,message){await db.execute(`UPDATE respaldos SET estado='exitoso',archivo_disponible=FALSE,mensaje_resultado=?,fecha_finalizacion=NOW() WHERE id_respaldo=?`,[message,id]);}
 async function oldestManual(db,keep){const [rows]=await db.execute(`SELECT id_respaldo,ruta_segura FROM respaldos WHERE tipo='manual' AND operacion='respaldo' AND estado='exitoso' AND archivo_disponible=TRUE ORDER BY fecha_finalizacion DESC,id_respaldo DESC LIMIT 18446744073709551615 OFFSET ?`,[keep]);return rows;}
 async function retire(db,id){await db.execute(`UPDATE respaldos SET archivo_disponible=FALSE,mensaje_resultado='Archivo retirado por politica de retencion' WHERE id_respaldo=?`,[id]);}
 async function audit(db,d){await db.execute(`INSERT INTO bitacora(id_usuario,modulo,accion,entidad,id_entidad,datos_anteriores,datos_nuevos,direccion_ip,resultado,fecha_evento) VALUES(?,'respaldos',?,'respaldo',?,NULL,?,?,?,NOW())`,[d.userId,d.action,d.id,JSON.stringify(d.data),d.ipAddress||null,d.result]);}
-async function verifyEssentialTables(db){const names=['usuarios','roles','permisos','respaldos','bitacora'];const [rows]=await db.execute(`SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name IN (?,?,?,?,?)`,[require('../../config/env').database.name,...names]);return new Set(rows.map(row=>row.TABLE_NAME||row.table_name)).size===names.length;}
-module.exports={audit,completeRestoration,create,fail,findById,list,oldestManual,retire,succeed,verifyEssentialTables};
+async function userExists(db,id){const [rows]=await db.execute('SELECT id_usuario FROM usuarios WHERE id_usuario=? LIMIT 1',[id]);return rows.length===1;}
+async function verifyEssentialTables(db){
+  const databaseName=require('../../config/env').database.name;
+  const names=['usuarios','roles','permisos','configuracion','respaldos','bitacora','productos','ventas','detalle_ventas','movimientos_inventario'];
+  const [[identity]]=await db.execute('SELECT DATABASE() nombre_base');
+  if((identity?.nombre_base||identity?.NOMBRE_BASE)!==databaseName)return false;
+  const placeholders=names.map(()=>'?').join(',');
+  const [rows]=await db.execute(`SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name IN (${placeholders})`,[databaseName,...names]);
+  if(new Set(rows.map(row=>row.TABLE_NAME||row.table_name)).size!==names.length)return false;
+  await Promise.all([
+    db.execute('SELECT id_usuario FROM usuarios LIMIT 1'),
+    db.execute('SELECT id_rol FROM roles LIMIT 1'),
+    db.execute('SELECT id_permiso FROM permisos LIMIT 1'),
+    db.execute('SELECT clave FROM configuracion LIMIT 1'),
+    db.execute('SELECT id_respaldo FROM respaldos LIMIT 1'),
+    db.execute('SELECT id_producto FROM productos LIMIT 1'),
+    db.execute('SELECT id_venta FROM ventas LIMIT 1'),
+    db.execute('SELECT id_movimiento_inventario FROM movimientos_inventario LIMIT 1'),
+  ]);
+  return true;
+}
+module.exports={audit,completeRestoration,create,createRecovered,fail,findById,list,oldestManual,retire,succeed,userExists,verifyEssentialTables};
